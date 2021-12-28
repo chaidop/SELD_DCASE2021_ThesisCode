@@ -1,0 +1,13 @@
+### requirements for puthon3.7 version
+keras == 2.3.1
+tensorflow == 2.0.0
+sklearn
+scipy
+numpy == 1.20.0
+librosa
+matplotlib
+IPython
+Pillow
+
+numba == 0.53
+h5py == 2.10.0

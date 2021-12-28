@@ -53,6 +53,7 @@ def main(argv):
                               (default) 1
 
     """
+    print(tf.test.is_built_with_cuda())
     print(argv)
     if len(argv) != 3:
         print('\n\n')
@@ -65,7 +66,7 @@ def main(argv):
               'You can use any number or string for this.')
         print('-------------------------------------------------------------------------------------------------------')
         print('\n\n')
-
+    
     # use parameter set defined by user
     task_id = '1' if len(argv) < 2 else argv[1]
     params = parameter.get_params(task_id)

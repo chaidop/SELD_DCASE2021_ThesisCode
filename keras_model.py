@@ -16,6 +16,8 @@ from keras.models import load_model
 import tensorflow.keras
 import keras
 import tensorflow as tf
+from numba import jit, cuda
+
 
 keras.backend.set_image_data_format('channels_first')
 from IPython import embed
@@ -133,9 +135,13 @@ def resnet50(input_im):
   model = Model(inputs=input_im, outputs=x, name='Resnet50')
 
   return model
-
+  
+# function optimized to run on gpu
+#@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
               rnn_size, fnn_size, weights, doa_objective, is_accdoa):
+
+    #sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
     # model definition
     spec_start = Input(shape=(data_in[-3], data_in[-2], data_in[-1]))
 

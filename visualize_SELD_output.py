@@ -45,8 +45,8 @@ pred = os.path.join(params['dcase_output_dir'], '2_mic_dev_test/fold6_room1_mix0
 # path of reference audio directory for visualizing the spectrogram and description directory for
 # visualizing the reference
 # Note: The code finds out the audio filename from the predicted filename automatically
-ref_dir = os.path.join(params['dataset_dir'], 'metadata_dev')
-aud_dir = os.path.join(params['dataset_dir'], 'mic_dev')
+ref_dir = os.path.join(params['dataset_dir'], 'metadata_dev/dev-test')      #dev-test path added, originally not there
+aud_dir = os.path.join(params['dataset_dir'], 'mic_dev/dev-test')
 
 # load the predicted output format
 feat_cls = cls_feature_class.FeatureClass(params)

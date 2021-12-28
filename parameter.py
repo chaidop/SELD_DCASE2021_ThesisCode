@@ -11,7 +11,7 @@ def get_params(argv='1'):
         quick_test=False,           # If True: Trains/test on small subset of dataset, and # of epochs
 
         # INPUT PATH
-        dataset_dir='.',  # Base folder containing the foa_dev/mic_dev and metadata folders
+        dataset_dir='./input_data',  # Base folder containing the foa_dev/mic_dev and metadata folders
 
         # OUTPUT PATH
         feat_label_dir='./seld_feat_label/',  # Directory to dump extracted features and labels
