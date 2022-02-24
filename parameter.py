@@ -8,6 +8,7 @@ def get_params(argv='1'):
     print("SET: {}".format(argv))
     # ########### default parameters ##############
     params = dict(
+        model_approach = 0,
         quick_test=False,           # If True: Trains/test on small subset of dataset, and # of epochs
 
         # INPUT PATH
@@ -42,7 +43,7 @@ def get_params(argv='1'):
         rnn_size=[128, 128],        # RNN contents, length of list = number of layers, list value = number of nodes
         fnn_size=[128],             # FNN contents, length of list = number of layers, list value = number of nodes
         loss_weights=[1., 1000.],   # [sed, doa] weight for scaling the DNN outputs
-        nb_epochs=3,               # Train for maximum epochs #### originally 50
+        nb_epochs=40,               # Train for maximum epochs #### originally 50
         epochs_per_fit=5,           # Number of epochs per fit
 
         # METRIC PARAMETERS

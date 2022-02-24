@@ -1,28 +1,48 @@
 #
 # The SELDnet architecture
 #
+########## CHANGED import keras. ... to import tensorflow.keras....
+#import tensorflow
+#from tensorflow import keras
 
-from keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, ZeroPadding2D, AveragePooling2D, Flatten, Add
+#import tensorflow.keras
+from keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
-from keras.layers import add, multiply, GlobalAveragePooling2D, ELU
-import keras.backend as K
 from keras.layers.recurrent import GRU
 from keras.layers.normalization import BatchNormalization
-from keras.activations import relu
 from keras.models import Model
 from keras.layers.wrappers import TimeDistributed
 from keras.optimizers import Adam
 from keras.models import load_model
-import tensorflow.keras
 import keras
-import tensorflow as tf
-from numba import jit, cuda
-
-
 keras.backend.set_image_data_format('channels_first')
 from IPython import embed
 import numpy as np
 
+
+from keras import backend as K
+K.tensorflow_backend._get_available_gpus()
+
+from numba import jit, cuda
+
+import tensorflow as tf
+#physical_devices = tf.config.experimental.list_physical_devices('GPU')
+#for device in physical_devices:
+#    tf.config.experimental.set_memory_growth(device, True)
+
+sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+from tensorflow.python.client import device_lib
+print(device_lib.list_local_devices())
+''' 
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
+'''
+'''
+configuration = tf.compat.v1.ConfigProto()
+configuration.gpu_options.allow_growth = True
+session = tf.compat.v1.Session(config=configuration)
+'''
 def res_identity(x, filters):
   #renet block where dimension doesnot change.
   #The skip connection is just simple identity conncection
@@ -30,25 +50,31 @@ def res_identity(x, filters):
 
   x_skip = x # this will be used for addition with the residual block
   f1, f2 = filters
-
+  print("\n--------IDENTITY---------\n")
   #first block
-  x = Conv2D(f1, kernel_size=(1, 1), strides=(1, 1), padding='valid', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  print(x)
   x = BatchNormalization()(x)
-  x = Activation(relu)(x)
-
+  print(x)
+  x = Activation('relu')(x)
+  print(x)
   #second block # bottleneck (but size kept same with padding)
-  x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  x = BatchNormalization()(x)
-  x = Activation(relu)(x)
+  #x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  #x = BatchNormalization()(x)
+  #x = Activation('relu')(x)
 
   # third block activation used after adding the input
-  x = Conv2D(f2, kernel_size=(1, 1), strides=(1, 1), padding='valid', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f2, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  print(x)
   x = BatchNormalization()(x)
+  print(x)
   # x = Activation(activations.relu)(x)
 
   # add the input
   x = Add()([x, x_skip])
-  x = Activation(relu)(x)
+  print(x)
+  x = Activation('relu')(x)
+  print(x)
 
   return x
 
@@ -57,29 +83,36 @@ def res_conv(x, s, filters):
   here the input size changes'''
   x_skip = x
   f1, f2 = filters
-
+  print('\n------------ CONV BLOCK ------------\n')
   # first block
-  x = Conv2D(f1, kernel_size=(1, 1), strides=(s, s), padding='valid', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f1, kernel_size=(3,3), strides=(s, s), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  print(x)
   # when s = 2 then it is like downsizing the feature map
   x = BatchNormalization()(x)
-  x = Activation(relu)(x)
+  print(x)
+  x = Activation('relu')(x)
+  print(x)
 
   # second block
-  x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  x = BatchNormalization()(x)
-  x = Activation(relu)(x)
+  #x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  #x = BatchNormalization()(x)
+  #x = Activation('relu')(x)
 
   #third block
-  x = Conv2D(f2, kernel_size=(1, 1), strides=(1, 1), padding='valid', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  print(x)
   x = BatchNormalization()(x)
+  print(x)
 
-  # shortcut
-  x_skip = Conv2D(f2, kernel_size=(1, 1), strides=(s, s), padding='valid', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x_skip)
+  # shortcut, Processing Residue with conv(1,1)
+  x_skip = Conv2D(f2, kernel_size=(1, 1), strides=(s, s), kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x_skip)
+  print(x)
   x_skip = BatchNormalization()(x_skip)
+  print(x)
 
   # add
   x = Add()([x, x_skip])
-  x = Activation(relu)(x)
+  x = Activation('relu')(x)
 
   return x
 #implement the Resnet50 architecture
@@ -92,7 +125,7 @@ def resnet50(input_im):
 
   x = Conv2D(64, kernel_size=(7, 7), strides=(2, 2))(x)
   x = BatchNormalization()(x)
-  x = Activation(relu)(x)
+  x = Activation('relu')(x)
   x = MaxPooling2D((3, 3), strides=(2, 2))(x)
 
   #2nd stage
@@ -139,7 +172,14 @@ def resnet50(input_im):
 # function optimized to run on gpu
 #@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
-              rnn_size, fnn_size, weights, doa_objective, is_accdoa):
+              rnn_size, fnn_size, weights, doa_objective, is_accdoa,
+              model_approach): ####### CUSTOM CODE
+
+    #tf.config.experimental.list_physical_devices('GPU')
+    #tf.debugging.set_log_device_placement(True)
+
+    #physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    #tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
     #sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
     # model definition
@@ -147,133 +187,178 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
 
     # CNN
     spec_cnn = spec_start
-    ######## skip connection #####
-    #xskip = spec_cnn
-    #x = Add()([x, x_skip])
-    #x = Activation(relu)(x)
+    print(spec_cnn)
     ###### end #####
-    #spec_cnn = ZeroPadding2D(padding=(3, 3))(spec_cnn)
-    for i, convCnt in enumerate(f_pool_size):
-        spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
-        spec_cnn = BatchNormalization()(spec_cnn)
-        spec_cnn = Activation('relu')(spec_cnn)
-        spec_cnn = MaxPooling2D(pool_size=(t_pool_size[i], f_pool_size[i]))(spec_cnn)
-        spec_cnn = Dropout(dropout_rate)(spec_cnn)
-    spec_cnn = Permute((2, 1, 3))(spec_cnn)
+    #spec_cnn = ZeroPadding2D(padding=(2, 2))(spec_cnn)
+    if model_approach == 0:
+        for i, convCnt in enumerate(f_pool_size):
+            spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+            spec_cnn = BatchNormalization()(spec_cnn)
+            spec_cnn = Activation('relu')(spec_cnn)
+            spec_cnn = MaxPooling2D(pool_size=(t_pool_size[i], f_pool_size[i]))(spec_cnn)
+            spec_cnn = Dropout(dropout_rate)(spec_cnn)
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
 
     ##### RESNET50 IMPLEMENTATION ##########
-    # frm here on only conv block and identity block, no pooling
-    """"
-    spec_cnn = res_conv(spec_cnn, s=1, filters=(64, 256))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(64, 256))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(64, 256))
-    print(spec_cnn)
-    # 3rd stage
+    
+    if model_approach == 2:
 
-    spec_cnn = res_conv(spec_cnn, s=2, filters=(128, 512))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(128, 512))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(128, 512))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(128, 512))
-    print(spec_cnn)
+        
+        # 1st stage
+        # here we perform maxpooling, see the figure above
+        x = spec_cnn
+        x = Conv2D(64, kernel_size=(7, 7), padding='same')(x)
+        print(x)
+        x = BatchNormalization()(x)
+        print(x)
+        x = Activation('relu')(x)
+        print(x)
+        x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
+        print(x)
+        spec_cnn = x
+        print("hello\n")
+        print(spec_cnn)
+        # frm here on only conv block and identity block, no pooling
+        print("\n############ STAGE 1 ##############\n")
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
+        print(spec_cnn)
+        # 3rd stage
+        print("\n############ STAGE 2 ##############\n")
+        spec_cnn = res_conv(spec_cnn, s=1, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2,nb_cnn2d_filt*2))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+        print(spec_cnn)
 
-    # 4th stage
+        #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
+        spec_cnn = Dropout(0.2)(spec_cnn)
+        # 4th stage
+        print("\n############ STAGE 3 ##############\n")
+        spec_cnn = res_conv(spec_cnn, s=2, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        print(spec_cnn)
 
-    spec_cnn = res_conv(spec_cnn, s=2, filters=(256, 1024))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    print(spec_cnn)
+        #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
+        spec_cnn = Dropout(0.2)(spec_cnn)
+        # 5th stage
+        print("\n############ STAGE 4 ##############\n")
+        spec_cnn = res_conv(spec_cnn, s=2, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+        print(spec_cnn)
+        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+        print(spec_cnn)
 
-    # 5th stage
+        print(spec_cnn)
+        spec_cnn = Dropout(0.2)(spec_cnn)
+        spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
+        print(spec_cnn)
+        spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
 
-    spec_cnn = res_conv(spec_cnn, s=2, filters=(60, 15))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(60, 15))
-    print(spec_cnn)
-    spec_cnn = res_identity(spec_cnn, filters=(60, 15))
-    print(spec_cnn)
+        #spec_cnn = Conv2D(nb_cnn2d_filt, kernel_size=(3,3), strides=(1, 2), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(spec_cnn)
+        print(spec_cnn)
+        # ends with average pooling and dense connection
+        #spec_cnn = BatchNormalization()(spec_cnn)
+        #spec_cnn = Activation('relu')(spec_cnn)
+        
+        #spec_cnn = AveragePooling2D(pool_size=(2,1), padding='same')(spec_cnn)
+        #print(spec_cnn)
 
-    # ends with average pooling and dense connection
-
-    spec_cnn = AveragePooling2D((2, 2), padding='same')(spec_cnn)
-    print(spec_cnn)
-    print("184")
-    #spec_cnn = Flatten()(spec_cnn)
-    print(spec_cnn)
+        #spec_cnn = Dropout(dropout_rate)(spec_cnn)
+        #spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
+        #print(spec_cnn)
+        #spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
+        #print(spec_cnn)
+        print("184")
+        print(spec_cnn)
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        
+        
     """
+        #####
+        #spec_cnn = ZeroPadding2D(padding=(6, 6))(spec_cnn)
+        print("========== ZEROPADD: ========")
+        print(spec_cnn)
+        # 1st stage
+        # here we perform maxpooling, see the figure above
 
-    """
-    spec_cnn = ZeroPadding2D(padding=(6, 6))(spec_cnn)
-    print("========== ZEROPADD: ========")
-    print(spec_cnn)
-    # 1st stage
-    # here we perform maxpooling, see the figure above
+        spec_cnn = Conv2D(64, kernel_size=(7, 7), strides=(2, 2))(spec_cnn)
+        print("========== CONV2D: ========")
+        print(spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        print("========== BATCH: ========")
+        print(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        print("========== RELU: ========")
+        print(spec_cnn)
+        spec_cnn = MaxPooling2D((3, 3), strides=(2, 2))(spec_cnn)
+        print("========== MAX POOL: ========")
+        print(spec_cnn)
+        # 2nd stage
+        # frm here on only conv block and identity block, no pooling
 
-    spec_cnn = Conv2D(64, kernel_size=(7, 7), strides=(2, 2))(spec_cnn)
-    print("========== CONV2D: ========")
-    print(spec_cnn)
-    spec_cnn = BatchNormalization()(spec_cnn)
-    print("========== BATCH: ========")
-    print(spec_cnn)
-    spec_cnn = Activation(tf.keras.activations.relu)(spec_cnn)
-    print("========== RELU: ========")
-    print(spec_cnn)
-    spec_cnn = MaxPooling2D((3, 3), strides=(2, 2))(spec_cnn)
-    print("========== MAX POOL: ========")
-    print(spec_cnn)
-    # 2nd stage
-    # frm here on only conv block and identity block, no pooling
+        spec_cnn = res_conv(spec_cnn, s=1, filters=(64, 256))
+        spec_cnn = res_identity(spec_cnn, filters=(64, 256))
+        spec_cnn = res_identity(spec_cnn, filters=(64, 256))
 
-    spec_cnn = res_conv(spec_cnn, s=1, filters=(64, 256))
-    spec_cnn = res_identity(spec_cnn, filters=(64, 256))
-    spec_cnn = res_identity(spec_cnn, filters=(64, 256))
+        # 3rd stage
 
-    # 3rd stage
+        spec_cnn = res_conv(spec_cnn, s=2, filters=(128, 512))
+        spec_cnn = res_identity(spec_cnn, filters=(128, 512))
+        spec_cnn = res_identity(spec_cnn, filters=(128, 512))
+        spec_cnn = res_identity(spec_cnn, filters=(128, 512))
 
-    spec_cnn = res_conv(spec_cnn, s=2, filters=(128, 512))
-    spec_cnn = res_identity(spec_cnn, filters=(128, 512))
-    spec_cnn = res_identity(spec_cnn, filters=(128, 512))
-    spec_cnn = res_identity(spec_cnn, filters=(128, 512))
+        # 4th stage
 
-    # 4th stage
+        spec_cnn = res_conv(spec_cnn, s=2, filters=(256, 1024))
+        spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
+        spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
+        spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
+        spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
+        spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
 
-    spec_cnn = res_conv(spec_cnn, s=2, filters=(256, 1024))
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
-    spec_cnn = res_identity(spec_cnn, filters=(256, 1024))
+        # 5th stage
 
-    # 5th stage
+        spec_cnn = res_conv(spec_cnn, s=2, filters=(512, 2048))
+        spec_cnn = res_identity(spec_cnn, filters=(512, 2048))
+        spec_cnn = res_identity(spec_cnn, filters=(512, 2048))
 
-    spec_cnn = res_conv(spec_cnn, s=2, filters=(512, 2048))
-    spec_cnn = res_identity(spec_cnn, filters=(512, 2048))
-    spec_cnn = res_identity(spec_cnn, filters=(512, 2048))
+        # ends with average pooling and dense connection
 
-    # ends with average pooling and dense connection
+        spec_cnn = AveragePooling2D((2, 2), padding='same')(spec_cnn)
 
-    spec_cnn = AveragePooling2D((2, 2), padding='same')(spec_cnn)
-
-    spec_cnn = Flatten()(spec_cnn)
-    """
-    """
-    tensorflow.keras.applications.resnet50.ResNet50(
+        spec_cnn = Flatten()(spec_cnn)
+    
+    ####
+    
+    model = keras.applications.ResNet50(
         include_top=True, weights=None, input_tensor=spec_cnn,
-        input_shape=None, pooling=max, classes=30,
+        input_shape=None, pooling=max, classes=12,
     )
     """
+    
 ########### END RESNET 50 ######################
     # RNN
     print(spec_cnn)

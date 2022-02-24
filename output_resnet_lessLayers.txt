@@ -1,0 +1,588 @@
+True
+['seld.py']
+
+
+
+-------------------------------------------------------------------------------------------------------
+The code expected two optional inputs
+	>> python seld.py <task-id> <job-id>
+		<task-id> is used to choose the user-defined parameter set from parameter.py
+Using default inputs for now
+		<job-id> is a unique identifier which is used for output filenames (models, training plots). You can use any number or string for this.
+-------------------------------------------------------------------------------------------------------
+
+
+
+SET: 1
+USING DEFAULT PARAMETERS
+
+	model_approach: 2
+	quick_test: False
+	dataset_dir: ./input_data
+	feat_label_dir: ./seld_feat_label/
+	model_dir: ./models/
+	dcase_output_dir: ./results/
+	mode: dev
+	dataset: mic
+	fs: 24000
+	hop_len_s: 0.02
+	label_hop_len_s: 0.1
+	max_audio_len_s: 60
+	nb_mel_bins: 64
+	is_accdoa: True
+	doa_objective: mse
+	label_sequence_length: 60
+	batch_size: 128
+	dropout_rate: 0.05
+	nb_cnn2d_filt: 64
+	f_pool_size: [4, 4, 2]
+	rnn_size: [128, 128]
+	fnn_size: [128]
+	loss_weights: [1.0, 1000.0]
+	nb_epochs: 40
+	epochs_per_fit: 5
+	lad_doa_thresh: 20
+	feature_sequence_length: 300
+	t_pool_size: [5, 1, 1]
+	patience: 40
+	unique_classes: {'alarm': 0, 'baby': 1, 'crash': 2, 'dog': 3, 'female_scream': 4, 'female_speech': 5, 'footsteps': 6, 'knock': 7, 'male_scream': 8, 'male_speech': 9, 'phone': 10, 'piano': 11}
+
+
+---------------------------------------------------------------------------------------------------
+------------------------------------      SPLIT 6   -----------------------------------------------
+---------------------------------------------------------------------------------------------------
+unique_name: ./models/1_1_mic_dev_split6
+
+Loading training dataset:
+	Datagen_mode: dev, nb_files: 400, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: [1, 2, 3, 4]
+	batch_size: 128, feat_seq_len: 300, label_seq_len: 60, shuffle: True
+	Total batches in dataset: 31
+	label_dir: ./seld_feat_label/mic_dev_label
+ 	feat_dir: ./seld_feat_label/mic_dev_norm
+
+Loading validation dataset:
+	Datagen_mode: dev, nb_files: 100, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: 5
+	batch_size: 10, feat_seq_len: 300, label_seq_len: 60, shuffle: False
+	Total batches in dataset: 100
+	label_dir: ./seld_feat_label/mic_dev_label
+ 	feat_dir: ./seld_feat_label/mic_dev_norm
+
+FEATURES:
+	data_in: (128, 10, 300, 64)
+	data_out: (128, 60, 36)
+
+MODEL:
+	dropout_rate: 0.05
+	CNN: nb_cnn_filt: 64, f_pool_size[4, 4, 2], t_pool_size[5, 1, 1]
+	rnn_size: [128, 128], fnn_size: [128]
+	doa_objective: mse
+
+Using loss weights : [1.0, 1000.0]
+Tensor("input_1:0", shape=(?, 10, 300, 64), dtype=float32)
+Tensor("conv2d_1/add:0", shape=(?, 64, 300, 64), dtype=float32)
+Tensor("batch_normalization_1/cond/Merge:0", shape=(?, 64, 300, 64), dtype=float32)
+Tensor("activation_1/Relu:0", shape=(?, 64, 300, 64), dtype=float32)
+Tensor("max_pooling2d_1/transpose_1:0", shape=(?, 64, 60, 16), dtype=float32)
+hello
+
+Tensor("max_pooling2d_1/transpose_1:0", shape=(?, 64, 60, 16), dtype=float32)
+
+############ STAGE 1 ##############
+
+
+--------IDENTITY---------
+
+Tensor("conv2d_2/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("batch_normalization_2/cond/Merge:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_2/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("conv2d_3/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("batch_normalization_3/cond/Merge:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("add_1/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_3/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_3/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_4/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("batch_normalization_4/cond/Merge:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_4/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("conv2d_5/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("batch_normalization_5/cond/Merge:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("add_2/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_5/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_5/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_6/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("batch_normalization_6/cond/Merge:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_6/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("conv2d_7/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("batch_normalization_7/cond/Merge:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("add_3/add:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_7/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+Tensor("activation_7/Relu:0", shape=(?, 64, 60, 16), dtype=float32)
+
+############ STAGE 2 ##############
+
+
+------------ CONV BLOCK ------------
+
+Tensor("conv2d_8/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_8/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_8/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("conv2d_9/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_9/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_9/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_9/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_9/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_11/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_11/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_10/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("conv2d_12/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_12/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("add_5/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_11/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_11/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_13/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_13/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_12/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("conv2d_14/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_14/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("add_6/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_13/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_13/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_15/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_15/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_14/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("conv2d_16/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_16/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("add_7/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_15/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_15/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_17/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_17/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_16/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("conv2d_18/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("batch_normalization_18/cond/Merge:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("add_8/add:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_17/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+Tensor("activation_17/Relu:0", shape=(?, 128, 60, 16), dtype=float32)
+
+############ STAGE 3 ##############
+
+
+------------ CONV BLOCK ------------
+
+Tensor("conv2d_19/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_19/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_18/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("conv2d_20/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_20/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_20/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_20/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_19/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_22/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_22/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_20/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("conv2d_23/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_23/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("add_10/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_21/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_21/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_24/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_24/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_22/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("conv2d_25/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_25/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("add_11/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_23/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_23/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_26/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_26/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_24/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("conv2d_27/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_27/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("add_12/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_25/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_25/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_28/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_28/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_26/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("conv2d_29/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_29/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("add_13/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_27/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_27/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_30/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_30/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_28/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("conv2d_31/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_31/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("add_14/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_29/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_29/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_32/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_32/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_30/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("conv2d_33/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("batch_normalization_33/cond/Merge:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("add_15/add:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_31/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+Tensor("activation_31/Relu:0", shape=(?, 256, 30, 8), dtype=float32)
+
+############ STAGE 4 ##############
+
+
+------------ CONV BLOCK ------------
+
+Tensor("conv2d_34/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_34/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_32/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("conv2d_35/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_35/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_35/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_35/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_33/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_37/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_37/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_34/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("conv2d_38/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_38/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("add_17/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_35/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_35/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_39/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_39/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_36/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("conv2d_40/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_40/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("add_18/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_37/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_37/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+
+--------IDENTITY---------
+
+Tensor("conv2d_41/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_41/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_38/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("conv2d_42/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("batch_normalization_42/cond/Merge:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("add_19/add:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_39/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_39/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("activation_39/Relu:0", shape=(?, 512, 15, 4), dtype=float32)
+Tensor("dense_1/Relu:0", shape=(?, 512, 15, 512), dtype=float32)
+Tensor("dense_2/truediv:0", shape=(?, 512, 15, 12), dtype=float32)
+184
+Tensor("dense_2/truediv:0", shape=(?, 512, 15, 12), dtype=float32)
+Tensor("permute_1/transpose:0", shape=(?, 15, 512, 12), dtype=float32)
+data_out[-2]:
+60
+Tensor("permute_1/transpose:0", shape=(?, 15, 512, 12), dtype=float32)
+Tensor("permute_1/transpose:0", shape=(?, 15, 512, 12), dtype=float32)
+Tensor("permute_1/transpose:0", shape=(?, 15, 512, 12), dtype=float32)
+Model: "model_1"
+__________________________________________________________________________________________________
+Layer (type)                    Output Shape         Param #     Connected to                     
+==================================================================================================
+input_1 (InputLayer)            (None, 10, 300, 64)  0                                            
+__________________________________________________________________________________________________
+conv2d_1 (Conv2D)               (None, 64, 300, 64)  31424       input_1[0][0]                    
+__________________________________________________________________________________________________
+batch_normalization_1 (BatchNor (None, 64, 300, 64)  256         conv2d_1[0][0]                   
+__________________________________________________________________________________________________
+activation_1 (Activation)       (None, 64, 300, 64)  0           batch_normalization_1[0][0]      
+__________________________________________________________________________________________________
+max_pooling2d_1 (MaxPooling2D)  (None, 64, 60, 16)   0           activation_1[0][0]               
+__________________________________________________________________________________________________
+conv2d_2 (Conv2D)               (None, 64, 60, 16)   36928       max_pooling2d_1[0][0]            
+__________________________________________________________________________________________________
+batch_normalization_2 (BatchNor (None, 64, 60, 16)   64          conv2d_2[0][0]                   
+__________________________________________________________________________________________________
+activation_2 (Activation)       (None, 64, 60, 16)   0           batch_normalization_2[0][0]      
+__________________________________________________________________________________________________
+conv2d_3 (Conv2D)               (None, 64, 60, 16)   36928       activation_2[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_3 (BatchNor (None, 64, 60, 16)   64          conv2d_3[0][0]                   
+__________________________________________________________________________________________________
+add_1 (Add)                     (None, 64, 60, 16)   0           batch_normalization_3[0][0]      
+                                                                 max_pooling2d_1[0][0]            
+__________________________________________________________________________________________________
+activation_3 (Activation)       (None, 64, 60, 16)   0           add_1[0][0]                      
+__________________________________________________________________________________________________
+conv2d_4 (Conv2D)               (None, 64, 60, 16)   36928       activation_3[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_4 (BatchNor (None, 64, 60, 16)   64          conv2d_4[0][0]                   
+__________________________________________________________________________________________________
+activation_4 (Activation)       (None, 64, 60, 16)   0           batch_normalization_4[0][0]      
+__________________________________________________________________________________________________
+conv2d_5 (Conv2D)               (None, 64, 60, 16)   36928       activation_4[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_5 (BatchNor (None, 64, 60, 16)   64          conv2d_5[0][0]                   
+__________________________________________________________________________________________________
+add_2 (Add)                     (None, 64, 60, 16)   0           batch_normalization_5[0][0]      
+                                                                 activation_3[0][0]               
+__________________________________________________________________________________________________
+activation_5 (Activation)       (None, 64, 60, 16)   0           add_2[0][0]                      
+__________________________________________________________________________________________________
+conv2d_6 (Conv2D)               (None, 64, 60, 16)   36928       activation_5[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_6 (BatchNor (None, 64, 60, 16)   64          conv2d_6[0][0]                   
+__________________________________________________________________________________________________
+activation_6 (Activation)       (None, 64, 60, 16)   0           batch_normalization_6[0][0]      
+__________________________________________________________________________________________________
+conv2d_7 (Conv2D)               (None, 64, 60, 16)   36928       activation_6[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_7 (BatchNor (None, 64, 60, 16)   64          conv2d_7[0][0]                   
+__________________________________________________________________________________________________
+add_3 (Add)                     (None, 64, 60, 16)   0           batch_normalization_7[0][0]      
+                                                                 activation_5[0][0]               
+__________________________________________________________________________________________________
+activation_7 (Activation)       (None, 64, 60, 16)   0           add_3[0][0]                      
+__________________________________________________________________________________________________
+conv2d_8 (Conv2D)               (None, 128, 60, 16)  73856       activation_7[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_8 (BatchNor (None, 128, 60, 16)  64          conv2d_8[0][0]                   
+__________________________________________________________________________________________________
+activation_8 (Activation)       (None, 128, 60, 16)  0           batch_normalization_8[0][0]      
+__________________________________________________________________________________________________
+conv2d_9 (Conv2D)               (None, 128, 60, 16)  147584      activation_8[0][0]               
+__________________________________________________________________________________________________
+conv2d_10 (Conv2D)              (None, 128, 60, 16)  8320        activation_7[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_9 (BatchNor (None, 128, 60, 16)  64          conv2d_9[0][0]                   
+__________________________________________________________________________________________________
+batch_normalization_10 (BatchNo (None, 128, 60, 16)  64          conv2d_10[0][0]                  
+__________________________________________________________________________________________________
+add_4 (Add)                     (None, 128, 60, 16)  0           batch_normalization_9[0][0]      
+                                                                 batch_normalization_10[0][0]     
+__________________________________________________________________________________________________
+activation_9 (Activation)       (None, 128, 60, 16)  0           add_4[0][0]                      
+__________________________________________________________________________________________________
+conv2d_11 (Conv2D)              (None, 128, 60, 16)  147584      activation_9[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_11 (BatchNo (None, 128, 60, 16)  64          conv2d_11[0][0]                  
+__________________________________________________________________________________________________
+activation_10 (Activation)      (None, 128, 60, 16)  0           batch_normalization_11[0][0]     
+__________________________________________________________________________________________________
+conv2d_12 (Conv2D)              (None, 128, 60, 16)  147584      activation_10[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_12 (BatchNo (None, 128, 60, 16)  64          conv2d_12[0][0]                  
+__________________________________________________________________________________________________
+add_5 (Add)                     (None, 128, 60, 16)  0           batch_normalization_12[0][0]     
+                                                                 activation_9[0][0]               
+__________________________________________________________________________________________________
+activation_11 (Activation)      (None, 128, 60, 16)  0           add_5[0][0]                      
+__________________________________________________________________________________________________
+conv2d_13 (Conv2D)              (None, 128, 60, 16)  147584      activation_11[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_13 (BatchNo (None, 128, 60, 16)  64          conv2d_13[0][0]                  
+__________________________________________________________________________________________________
+activation_12 (Activation)      (None, 128, 60, 16)  0           batch_normalization_13[0][0]     
+__________________________________________________________________________________________________
+conv2d_14 (Conv2D)              (None, 128, 60, 16)  147584      activation_12[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_14 (BatchNo (None, 128, 60, 16)  64          conv2d_14[0][0]                  
+__________________________________________________________________________________________________
+add_6 (Add)                     (None, 128, 60, 16)  0           batch_normalization_14[0][0]     
+                                                                 activation_11[0][0]              
+__________________________________________________________________________________________________
+activation_13 (Activation)      (None, 128, 60, 16)  0           add_6[0][0]                      
+__________________________________________________________________________________________________
+conv2d_15 (Conv2D)              (None, 128, 60, 16)  147584      activation_13[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_15 (BatchNo (None, 128, 60, 16)  64          conv2d_15[0][0]                  
+__________________________________________________________________________________________________
+activation_14 (Activation)      (None, 128, 60, 16)  0           batch_normalization_15[0][0]     
+__________________________________________________________________________________________________
+conv2d_16 (Conv2D)              (None, 128, 60, 16)  147584      activation_14[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_16 (BatchNo (None, 128, 60, 16)  64          conv2d_16[0][0]                  
+__________________________________________________________________________________________________
+add_7 (Add)                     (None, 128, 60, 16)  0           batch_normalization_16[0][0]     
+                                                                 activation_13[0][0]              
+__________________________________________________________________________________________________
+activation_15 (Activation)      (None, 128, 60, 16)  0           add_7[0][0]                      
+__________________________________________________________________________________________________
+conv2d_17 (Conv2D)              (None, 128, 60, 16)  147584      activation_15[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_17 (BatchNo (None, 128, 60, 16)  64          conv2d_17[0][0]                  
+__________________________________________________________________________________________________
+activation_16 (Activation)      (None, 128, 60, 16)  0           batch_normalization_17[0][0]     
+__________________________________________________________________________________________________
+conv2d_18 (Conv2D)              (None, 128, 60, 16)  147584      activation_16[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_18 (BatchNo (None, 128, 60, 16)  64          conv2d_18[0][0]                  
+__________________________________________________________________________________________________
+add_8 (Add)                     (None, 128, 60, 16)  0           batch_normalization_18[0][0]     
+                                                                 activation_15[0][0]              
+__________________________________________________________________________________________________
+activation_17 (Activation)      (None, 128, 60, 16)  0           add_8[0][0]                      
+__________________________________________________________________________________________________
+dropout_1 (Dropout)             (None, 128, 60, 16)  0           activation_17[0][0]              
+__________________________________________________________________________________________________
+conv2d_19 (Conv2D)              (None, 256, 30, 8)   295168      dropout_1[0][0]                  
+__________________________________________________________________________________________________
+batch_normalization_19 (BatchNo (None, 256, 30, 8)   32          conv2d_19[0][0]                  
+__________________________________________________________________________________________________
+activation_18 (Activation)      (None, 256, 30, 8)   0           batch_normalization_19[0][0]     
+__________________________________________________________________________________________________
+conv2d_20 (Conv2D)              (None, 256, 30, 8)   590080      activation_18[0][0]              
+__________________________________________________________________________________________________
+conv2d_21 (Conv2D)              (None, 256, 30, 8)   33024       dropout_1[0][0]                  
+__________________________________________________________________________________________________
+batch_normalization_20 (BatchNo (None, 256, 30, 8)   32          conv2d_20[0][0]                  
+__________________________________________________________________________________________________
+batch_normalization_21 (BatchNo (None, 256, 30, 8)   32          conv2d_21[0][0]                  
+__________________________________________________________________________________________________
+add_9 (Add)                     (None, 256, 30, 8)   0           batch_normalization_20[0][0]     
+                                                                 batch_normalization_21[0][0]     
+__________________________________________________________________________________________________
+activation_19 (Activation)      (None, 256, 30, 8)   0           add_9[0][0]                      
+__________________________________________________________________________________________________
+conv2d_22 (Conv2D)              (None, 256, 30, 8)   590080      activation_19[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_22 (BatchNo (None, 256, 30, 8)   32          conv2d_22[0][0]                  
+__________________________________________________________________________________________________
+activation_20 (Activation)      (None, 256, 30, 8)   0           batch_normalization_22[0][0]     
+__________________________________________________________________________________________________
+conv2d_23 (Conv2D)              (None, 256, 30, 8)   590080      activation_20[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_23 (BatchNo (None, 256, 30, 8)   32          conv2d_23[0][0]                  
+__________________________________________________________________________________________________
+add_10 (Add)                    (None, 256, 30, 8)   0           batch_normalization_23[0][0]     
+                                                                 activation_19[0][0]              
+__________________________________________________________________________________________________
+activation_21 (Activation)      (None, 256, 30, 8)   0           add_10[0][0]                     
+__________________________________________________________________________________________________
+conv2d_24 (Conv2D)              (None, 256, 30, 8)   590080      activation_21[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_24 (BatchNo (None, 256, 30, 8)   32          conv2d_24[0][0]                  
+__________________________________________________________________________________________________
+activation_22 (Activation)      (None, 256, 30, 8)   0           batch_normalization_24[0][0]     
+__________________________________________________________________________________________________
+conv2d_25 (Conv2D)              (None, 256, 30, 8)   590080      activation_22[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_25 (BatchNo (None, 256, 30, 8)   32          conv2d_25[0][0]                  
+__________________________________________________________________________________________________
+add_11 (Add)                    (None, 256, 30, 8)   0           batch_normalization_25[0][0]     
+                                                                 activation_21[0][0]              
+__________________________________________________________________________________________________
+activation_23 (Activation)      (None, 256, 30, 8)   0           add_11[0][0]                     
+__________________________________________________________________________________________________
+conv2d_26 (Conv2D)              (None, 256, 30, 8)   590080      activation_23[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_26 (BatchNo (None, 256, 30, 8)   32          conv2d_26[0][0]                  
+__________________________________________________________________________________________________
+activation_24 (Activation)      (None, 256, 30, 8)   0           batch_normalization_26[0][0]     
+__________________________________________________________________________________________________
+conv2d_27 (Conv2D)              (None, 256, 30, 8)   590080      activation_24[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_27 (BatchNo (None, 256, 30, 8)   32          conv2d_27[0][0]                  
+__________________________________________________________________________________________________
+add_12 (Add)                    (None, 256, 30, 8)   0           batch_normalization_27[0][0]     
+                                                                 activation_23[0][0]              
+__________________________________________________________________________________________________
+activation_25 (Activation)      (None, 256, 30, 8)   0           add_12[0][0]                     
+__________________________________________________________________________________________________
+conv2d_28 (Conv2D)              (None, 256, 30, 8)   590080      activation_25[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_28 (BatchNo (None, 256, 30, 8)   32          conv2d_28[0][0]                  
+__________________________________________________________________________________________________
+activation_26 (Activation)      (None, 256, 30, 8)   0           batch_normalization_28[0][0]     
+__________________________________________________________________________________________________
+conv2d_29 (Conv2D)              (None, 256, 30, 8)   590080      activation_26[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_29 (BatchNo (None, 256, 30, 8)   32          conv2d_29[0][0]                  
+__________________________________________________________________________________________________
+add_13 (Add)                    (None, 256, 30, 8)   0           batch_normalization_29[0][0]     
+                                                                 activation_25[0][0]              
+__________________________________________________________________________________________________
+activation_27 (Activation)      (None, 256, 30, 8)   0           add_13[0][0]                     
+__________________________________________________________________________________________________
+conv2d_30 (Conv2D)              (None, 256, 30, 8)   590080      activation_27[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_30 (BatchNo (None, 256, 30, 8)   32          conv2d_30[0][0]                  
+__________________________________________________________________________________________________
+activation_28 (Activation)      (None, 256, 30, 8)   0           batch_normalization_30[0][0]     
+__________________________________________________________________________________________________
+conv2d_31 (Conv2D)              (None, 256, 30, 8)   590080      activation_28[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_31 (BatchNo (None, 256, 30, 8)   32          conv2d_31[0][0]                  
+__________________________________________________________________________________________________
+add_14 (Add)                    (None, 256, 30, 8)   0           batch_normalization_31[0][0]     
+                                                                 activation_27[0][0]              
+__________________________________________________________________________________________________
+activation_29 (Activation)      (None, 256, 30, 8)   0           add_14[0][0]                     
+__________________________________________________________________________________________________
+conv2d_32 (Conv2D)              (None, 256, 30, 8)   590080      activation_29[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_32 (BatchNo (None, 256, 30, 8)   32          conv2d_32[0][0]                  
+__________________________________________________________________________________________________
+activation_30 (Activation)      (None, 256, 30, 8)   0           batch_normalization_32[0][0]     
+__________________________________________________________________________________________________
+conv2d_33 (Conv2D)              (None, 256, 30, 8)   590080      activation_30[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_33 (BatchNo (None, 256, 30, 8)   32          conv2d_33[0][0]                  
+__________________________________________________________________________________________________
+add_15 (Add)                    (None, 256, 30, 8)   0           batch_normalization_33[0][0]     
+                                                                 activation_29[0][0]              
+__________________________________________________________________________________________________
+activation_31 (Activation)      (None, 256, 30, 8)   0           add_15[0][0]                     
+__________________________________________________________________________________________________
+dropout_2 (Dropout)             (None, 256, 30, 8)   0           activation_31[0][0]              
+__________________________________________________________________________________________________
+conv2d_34 (Conv2D)              (None, 512, 15, 4)   1180160     dropout_2[0][0]                  
+__________________________________________________________________________________________________
+batch_normalization_34 (BatchNo (None, 512, 15, 4)   16          conv2d_34[0][0]                  
+__________________________________________________________________________________________________
+activation_32 (Activation)      (None, 512, 15, 4)   0           batch_normalization_34[0][0]     
+__________________________________________________________________________________________________
+conv2d_35 (Conv2D)              (None, 512, 15, 4)   2359808     activation_32[0][0]              
+__________________________________________________________________________________________________
+conv2d_36 (Conv2D)              (None, 512, 15, 4)   131584      dropout_2[0][0]                  
+__________________________________________________________________________________________________
+batch_normalization_35 (BatchNo (None, 512, 15, 4)   16          conv2d_35[0][0]                  

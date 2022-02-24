@@ -1,0 +1,738 @@
+True
+['seld.py', '2']
+
+
+
+-------------------------------------------------------------------------------------------------------
+The code expected two optional inputs
+	>> python seld.py <task-id> <job-id>
+		<task-id> is used to choose the user-defined parameter set from parameter.py
+Using default inputs for now
+		<job-id> is a unique identifier which is used for output filenames (models, training plots). You can use any number or string for this.
+-------------------------------------------------------------------------------------------------------
+
+
+
+SET: 2
+	model_param: 2
+	quick_test: False
+	dataset_dir: ./input_data
+	feat_label_dir: ./seld_feat_label/
+	model_dir: ./models/
+	dcase_output_dir: ./results/
+	mode: dev
+	dataset: mic
+	fs: 24000
+	hop_len_s: 0.02
+	label_hop_len_s: 0.1
+	max_audio_len_s: 60
+	nb_mel_bins: 64
+	is_accdoa: True
+	doa_objective: mse
+	label_sequence_length: 60
+	batch_size: 128
+	dropout_rate: 0.05
+	nb_cnn2d_filt: 64
+	f_pool_size: [4, 4, 2]
+	rnn_size: [128, 128]
+	fnn_size: [128]
+	loss_weights: [1.0, 1000.0]
+	nb_epochs: 40
+	epochs_per_fit: 5
+	lad_doa_thresh: 20
+	feature_sequence_length: 300
+	t_pool_size: [5, 1, 1]
+	patience: 40
+	unique_classes: {'alarm': 0, 'baby': 1, 'crash': 2, 'dog': 3, 'female_scream': 4, 'female_speech': 5, 'footsteps': 6, 'knock': 7, 'male_scream': 8, 'male_speech': 9, 'phone': 10, 'piano': 11}
+
+
+---------------------------------------------------------------------------------------------------
+------------------------------------      SPLIT 6   -----------------------------------------------
+---------------------------------------------------------------------------------------------------
+unique_name: ./models/2_1_mic_dev_split6
+
+Loading training dataset:
+	Datagen_mode: dev, nb_files: 400, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: [1, 2, 3, 4]
+	batch_size: 128, feat_seq_len: 300, label_seq_len: 60, shuffle: True
+	Total batches in dataset: 31
+	label_dir: ./seld_feat_label/mic_dev_label
+ 	feat_dir: ./seld_feat_label/mic_dev_norm
+
+Loading validation dataset:
+	Datagen_mode: dev, nb_files: 100, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: 5
+	batch_size: 10, feat_seq_len: 300, label_seq_len: 60, shuffle: False
+	Total batches in dataset: 100
+	label_dir: ./seld_feat_label/mic_dev_label
+ 	feat_dir: ./seld_feat_label/mic_dev_norm
+
+FEATURES:
+	data_in: (128, 10, 300, 64)
+	data_out: (128, 60, 36)
+
+MODEL:
+	dropout_rate: 0.05
+	CNN: nb_cnn_filt: 64, f_pool_size[4, 4, 2], t_pool_size[5, 1, 1]
+	rnn_size: [128, 128], fnn_size: [128]
+	doa_objective: mse
+
+Using loss weights : [1.0, 1000.0]
+Tensor("activation_3/Relu:0", shape=(?, 64, 150, 32), dtype=float32)
+Tensor("activation_6/Relu:0", shape=(?, 64, 150, 32), dtype=float32)
+Tensor("activation_9/Relu:0", shape=(?, 64, 150, 32), dtype=float32)
+Tensor("average_pooling2d_1/transpose_1:0", shape=(?, 64, 75, 16), dtype=float32)
+184
+Tensor("average_pooling2d_1/transpose_1:0", shape=(?, 64, 75, 16), dtype=float32)
+Tensor("average_pooling2d_1/transpose_1:0", shape=(?, 64, 75, 16), dtype=float32)
+data_out[-2]:
+60
+Tensor("average_pooling2d_1/transpose_1:0", shape=(?, 64, 75, 16), dtype=float32)
+Tensor("average_pooling2d_1/transpose_1:0", shape=(?, 64, 75, 16), dtype=float32)
+Tensor("average_pooling2d_1/transpose_1:0", shape=(?, 64, 75, 16), dtype=float32)
+Model: "model_1"
+__________________________________________________________________________________________________
+Layer (type)                    Output Shape         Param #     Connected to                     
+==================================================================================================
+input_1 (InputLayer)            (None, 10, 300, 64)  0                                            
+__________________________________________________________________________________________________
+conv2d_1 (Conv2D)               (None, 64, 150, 32)  704         input_1[0][0]                    
+__________________________________________________________________________________________________
+batch_normalization_1 (BatchNor (None, 64, 150, 32)  128         conv2d_1[0][0]                   
+__________________________________________________________________________________________________
+activation_1 (Activation)       (None, 64, 150, 32)  0           batch_normalization_1[0][0]      
+__________________________________________________________________________________________________
+conv2d_2 (Conv2D)               (None, 64, 150, 32)  36928       activation_1[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_2 (BatchNor (None, 64, 150, 32)  128         conv2d_2[0][0]                   
+__________________________________________________________________________________________________
+activation_2 (Activation)       (None, 64, 150, 32)  0           batch_normalization_2[0][0]      
+__________________________________________________________________________________________________
+conv2d_3 (Conv2D)               (None, 64, 150, 32)  4160        activation_2[0][0]               
+__________________________________________________________________________________________________
+conv2d_4 (Conv2D)               (None, 64, 150, 32)  704         input_1[0][0]                    
+__________________________________________________________________________________________________
+batch_normalization_3 (BatchNor (None, 64, 150, 32)  128         conv2d_3[0][0]                   
+__________________________________________________________________________________________________
+batch_normalization_4 (BatchNor (None, 64, 150, 32)  128         conv2d_4[0][0]                   
+__________________________________________________________________________________________________
+add_1 (Add)                     (None, 64, 150, 32)  0           batch_normalization_3[0][0]      
+                                                                 batch_normalization_4[0][0]      
+__________________________________________________________________________________________________
+activation_3 (Activation)       (None, 64, 150, 32)  0           add_1[0][0]                      
+__________________________________________________________________________________________________
+conv2d_5 (Conv2D)               (None, 64, 150, 32)  4160        activation_3[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_5 (BatchNor (None, 64, 150, 32)  128         conv2d_5[0][0]                   
+__________________________________________________________________________________________________
+activation_4 (Activation)       (None, 64, 150, 32)  0           batch_normalization_5[0][0]      
+__________________________________________________________________________________________________
+conv2d_6 (Conv2D)               (None, 64, 150, 32)  36928       activation_4[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_6 (BatchNor (None, 64, 150, 32)  128         conv2d_6[0][0]                   
+__________________________________________________________________________________________________
+activation_5 (Activation)       (None, 64, 150, 32)  0           batch_normalization_6[0][0]      
+__________________________________________________________________________________________________
+conv2d_7 (Conv2D)               (None, 64, 150, 32)  4160        activation_5[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_7 (BatchNor (None, 64, 150, 32)  128         conv2d_7[0][0]                   
+__________________________________________________________________________________________________
+add_2 (Add)                     (None, 64, 150, 32)  0           batch_normalization_7[0][0]      
+                                                                 activation_3[0][0]               
+__________________________________________________________________________________________________
+activation_6 (Activation)       (None, 64, 150, 32)  0           add_2[0][0]                      
+__________________________________________________________________________________________________
+conv2d_8 (Conv2D)               (None, 64, 150, 32)  4160        activation_6[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_8 (BatchNor (None, 64, 150, 32)  128         conv2d_8[0][0]                   
+__________________________________________________________________________________________________
+activation_7 (Activation)       (None, 64, 150, 32)  0           batch_normalization_8[0][0]      
+__________________________________________________________________________________________________
+conv2d_9 (Conv2D)               (None, 64, 150, 32)  36928       activation_7[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_9 (BatchNor (None, 64, 150, 32)  128         conv2d_9[0][0]                   
+__________________________________________________________________________________________________
+activation_8 (Activation)       (None, 64, 150, 32)  0           batch_normalization_9[0][0]      
+__________________________________________________________________________________________________
+conv2d_10 (Conv2D)              (None, 64, 150, 32)  4160        activation_8[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_10 (BatchNo (None, 64, 150, 32)  128         conv2d_10[0][0]                  
+__________________________________________________________________________________________________
+add_3 (Add)                     (None, 64, 150, 32)  0           batch_normalization_10[0][0]     
+                                                                 activation_6[0][0]               
+__________________________________________________________________________________________________
+activation_9 (Activation)       (None, 64, 150, 32)  0           add_3[0][0]                      
+__________________________________________________________________________________________________
+average_pooling2d_1 (AveragePoo (None, 64, 75, 16)   0           activation_9[0][0]               
+__________________________________________________________________________________________________
+reshape_1 (Reshape)             (None, 60, 1280)     0           average_pooling2d_1[0][0]        
+__________________________________________________________________________________________________
+bidirectional_1 (Bidirectional) (None, 60, 128)      1082112     reshape_1[0][0]                  
+__________________________________________________________________________________________________
+bidirectional_2 (Bidirectional) (None, 60, 128)      197376      bidirectional_1[0][0]            
+__________________________________________________________________________________________________
+time_distributed_1 (TimeDistrib (None, 60, 128)      16512       bidirectional_2[0][0]            
+__________________________________________________________________________________________________
+dropout_1 (Dropout)             (None, 60, 128)      0           time_distributed_1[0][0]         
+__________________________________________________________________________________________________
+time_distributed_2 (TimeDistrib (None, 60, 36)       4644        dropout_1[0][0]                  
+__________________________________________________________________________________________________
+doa_out (Activation)            (None, 60, 36)       0           time_distributed_2[0][0]         
+==================================================================================================
+Total params: 1,434,916
+Trainable params: 1,434,276
+Non-trainable params: 640
+__________________________________________________________________________________________________
+Dumping recording-wise val results in: ./results/2_mic_dev_val
+SELD metrics class: loaded : 600 reference files
+Epoch 1/5
+ - 416s - loss: 0.4391
+Epoch 2/5
+ - 404s - loss: 0.2452
+Epoch 3/5
+ - 405s - loss: 0.1569
+Epoch 4/5
+ - 407s - loss: 0.1093
+Epoch 5/5
+ - 405s - loss: 0.0805
+epoch_cnt: 0, time: 2078.35s, tr_loss: 0.08, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+ - 407s - loss: 0.0628
+Epoch 2/5
+ - 404s - loss: 0.0522
+Epoch 3/5
+ - 404s - loss: 0.0458
+Epoch 4/5
+ - 404s - loss: 0.0423
+Epoch 5/5
+ - 405s - loss: 0.0403
+epoch_cnt: 1, time: 2057.23s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+ - 407s - loss: 0.0390
+Epoch 2/5
+ - 403s - loss: 0.0384
+Epoch 3/5
+ - 404s - loss: 0.0380
+Epoch 4/5
+ - 411s - loss: 0.0378
+Epoch 5/5
+ - 404s - loss: 0.0377
+epoch_cnt: 2, time: 2061.40s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+ - 408s - loss: 0.0376
+Epoch 2/5
+ - 404s - loss: 0.0376
+Epoch 3/5
+ - 405s - loss: 0.0375
+Epoch 4/5
+ - 405s - loss: 0.0374
+Epoch 5/5
+ - 404s - loss: 0.0372
+epoch_cnt: 3, time: 2057.07s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+ - 408s - loss: 0.0371
+Epoch 2/5
+ - 404s - loss: 0.0368
+Epoch 3/5
+ - 404s - loss: 0.0365
+Epoch 4/5
+ - 403s - loss: 0.0363
+Epoch 5/5
+ - 404s - loss: 0.0357
+epoch_cnt: 4, time: 2054.77s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+ - 406s - loss: 0.0346
+Epoch 2/5
+ - 403s - loss: 0.0334
+Epoch 3/5
+ - 404s - loss: 0.0321
+Epoch 4/5
+ - 404s - loss: 0.0310
+Epoch 5/5
+ - 404s - loss: 0.0298
+epoch_cnt: 5, time: 2053.18s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+ - 408s - loss: 0.0285
+Epoch 2/5
+ - 404s - loss: 0.0273
+Epoch 3/5
+ - 404s - loss: 0.0263
+Epoch 4/5
+ - 405s - loss: 0.0267
+Epoch 5/5
+ - 403s - loss: 0.0258
+epoch_cnt: 6, time: 2057.59s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 42.4, LR:0.1, seld_score (early stopping score): 0.81, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 408s - loss: 0.0242
+Epoch 2/5
+ - 405s - loss: 0.0233
+Epoch 3/5
+ - 405s - loss: 0.0227
+Epoch 4/5
+ - 405s - loss: 0.0222
+Epoch 5/5
+ - 404s - loss: 0.0217
+epoch_cnt: 7, time: 2059.54s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 409s - loss: 0.0212
+Epoch 2/5
+ - 405s - loss: 0.0209
+Epoch 3/5
+ - 405s - loss: 0.0205
+Epoch 4/5
+ - 405s - loss: 0.0202
+Epoch 5/5
+ - 404s - loss: 0.0200
+epoch_cnt: 8, time: 2059.78s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 409s - loss: 0.0197
+Epoch 2/5
+ - 405s - loss: 0.0194
+Epoch 3/5
+ - 404s - loss: 0.0193
+Epoch 4/5
+ - 405s - loss: 0.0191
+Epoch 5/5
+ - 404s - loss: 0.0188
+epoch_cnt: 9, time: 2059.64s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 408s - loss: 0.0187
+Epoch 2/5
+ - 405s - loss: 0.0184
+Epoch 3/5
+ - 408s - loss: 0.0183
+Epoch 4/5
+ - 405s - loss: 0.0182
+Epoch 5/5
+ - 405s - loss: 0.0181
+epoch_cnt: 10, time: 2062.85s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0179
+Epoch 2/5
+ - 406s - loss: 0.0177
+Epoch 3/5
+ - 404s - loss: 0.0175
+Epoch 4/5
+ - 405s - loss: 0.0175
+Epoch 5/5
+ - 404s - loss: 0.0173
+epoch_cnt: 11, time: 2061.33s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 409s - loss: 0.0171
+Epoch 2/5
+ - 405s - loss: 0.0170
+Epoch 3/5
+ - 406s - loss: 0.0169
+Epoch 4/5
+ - 405s - loss: 0.0168
+Epoch 5/5
+ - 406s - loss: 0.0167
+epoch_cnt: 12, time: 2062.58s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0165
+Epoch 2/5
+ - 406s - loss: 0.0164
+Epoch 3/5
+ - 406s - loss: 0.0163
+Epoch 4/5
+ - 406s - loss: 0.0162
+Epoch 5/5
+ - 407s - loss: 0.0161
+epoch_cnt: 13, time: 2066.58s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 409s - loss: 0.0162
+Epoch 2/5
+ - 406s - loss: 0.0160
+Epoch 3/5
+ - 406s - loss: 0.0159
+Epoch 4/5
+ - 406s - loss: 0.0157
+Epoch 5/5
+ - 406s - loss: 0.0156
+epoch_cnt: 14, time: 2065.46s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 409s - loss: 0.0155
+Epoch 2/5
+ - 406s - loss: 0.0155
+Epoch 3/5
+ - 407s - loss: 0.0154
+Epoch 4/5
+ - 407s - loss: 0.0152
+Epoch 5/5
+ - 407s - loss: 0.0151
+epoch_cnt: 15, time: 2066.76s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0150
+Epoch 2/5
+ - 407s - loss: 0.0150
+Epoch 3/5
+ - 416s - loss: 0.0148
+Epoch 4/5
+ - 405s - loss: 0.0148
+Epoch 5/5
+ - 406s - loss: 0.0148
+epoch_cnt: 16, time: 2076.02s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0147
+Epoch 2/5
+ - 407s - loss: 0.0147
+Epoch 3/5
+ - 407s - loss: 0.0146
+Epoch 4/5
+ - 406s - loss: 0.0144
+Epoch 5/5
+ - 406s - loss: 0.0144
+epoch_cnt: 17, time: 2067.76s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 121.3, LR:0.0, seld_score (early stopping score): 0.92, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 409s - loss: 0.0143
+Epoch 2/5
+ - 406s - loss: 0.0141
+Epoch 3/5
+ - 406s - loss: 0.0142
+Epoch 4/5
+ - 407s - loss: 0.0142
+Epoch 5/5
+ - 407s - loss: 0.0141
+epoch_cnt: 18, time: 2068.07s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 116.2, LR:0.0, seld_score (early stopping score): 0.91, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 413s - loss: 0.0140
+Epoch 2/5
+ - 407s - loss: 0.0140
+Epoch 3/5
+ - 407s - loss: 0.0139
+Epoch 4/5
+ - 407s - loss: 0.0138
+Epoch 5/5
+ - 408s - loss: 0.0137
+epoch_cnt: 19, time: 2075.06s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 412s - loss: 0.0137
+Epoch 2/5
+ - 407s - loss: 0.0137
+Epoch 3/5
+ - 407s - loss: 0.0136
+Epoch 4/5
+ - 408s - loss: 0.0136
+Epoch 5/5
+ - 406s - loss: 0.0136
+epoch_cnt: 20, time: 2073.59s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 65.9, LR:0.0, seld_score (early stopping score): 0.84, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 411s - loss: 0.0136
+Epoch 2/5
+ - 408s - loss: 0.0134
+Epoch 3/5
+ - 407s - loss: 0.0133
+Epoch 4/5
+ - 407s - loss: 0.0132
+Epoch 5/5
+ - 407s - loss: 0.0132
+epoch_cnt: 21, time: 2072.47s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0131
+Epoch 2/5
+ - 407s - loss: 0.0132
+Epoch 3/5
+ - 408s - loss: 0.0130
+Epoch 4/5
+ - 407s - loss: 0.0130
+Epoch 5/5
+ - 408s - loss: 0.0129
+epoch_cnt: 22, time: 2072.22s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0129
+Epoch 2/5
+ - 406s - loss: 0.0129
+Epoch 3/5
+ - 407s - loss: 0.0128
+Epoch 4/5
+ - 408s - loss: 0.0127
+Epoch 5/5
+ - 407s - loss: 0.0127
+epoch_cnt: 23, time: 2071.15s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 120.5, LR:0.0, seld_score (early stopping score): 0.92, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 412s - loss: 0.0127
+Epoch 2/5
+ - 407s - loss: 0.0126
+Epoch 3/5
+ - 407s - loss: 0.0198
+Epoch 4/5
+ - 406s - loss: 0.0272
+Epoch 5/5
+ - 407s - loss: 0.0188
+epoch_cnt: 24, time: 2071.03s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 74.4, LR:0.1, seld_score (early stopping score): 0.85, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0164
+Epoch 2/5
+ - 408s - loss: 0.0153
+Epoch 3/5
+ - 408s - loss: 0.0148
+Epoch 4/5
+ - 407s - loss: 0.0145
+Epoch 5/5
+ - 407s - loss: 0.0142
+epoch_cnt: 25, time: 2072.61s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0139
+Epoch 2/5
+ - 407s - loss: 0.0138
+Epoch 3/5
+ - 406s - loss: 0.0136
+Epoch 4/5
+ - 408s - loss: 0.0135
+Epoch 5/5
+ - 407s - loss: 0.0134
+epoch_cnt: 26, time: 2070.46s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 410s - loss: 0.0133
+Epoch 2/5
+ - 407s - loss: 0.0133
+Epoch 3/5
+ - 407s - loss: 0.0131
+Epoch 4/5
+ - 408s - loss: 0.0130
+Epoch 5/5
+ - 408s - loss: 0.0130
+epoch_cnt: 27, time: 2073.65s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 412s - loss: 0.0129
+Epoch 2/5
+ - 407s - loss: 0.0128
+Epoch 3/5
+ - 409s - loss: 0.0127
+Epoch 4/5
+ - 409s - loss: 0.0127
+Epoch 5/5
+ - 408s - loss: 0.0127
+epoch_cnt: 28, time: 2076.97s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 411s - loss: 0.0126
+Epoch 2/5
+ - 408s - loss: 0.0125
+Epoch 3/5
+ - 409s - loss: 0.0125
+Epoch 4/5
+ - 408s - loss: 0.0124
+Epoch 5/5
+ - 407s - loss: 0.0124
+epoch_cnt: 29, time: 2074.82s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 0.81, best_epoch : 6
+
+Epoch 1/5
+ - 409s - loss: 0.0123
+Epoch 2/5
+ - 408s - loss: 0.0123
+Epoch 3/5
+ - 409s - loss: 0.0122
+Epoch 4/5
+ - 409s - loss: 0.0122
+Epoch 5/5
+ - 408s - loss: 0.0121
+epoch_cnt: 30, time: 2074.35s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 16.0, LR:0.0, seld_score (early stopping score): 0.77, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 412s - loss: 0.0121
+Epoch 2/5
+ - 408s - loss: 0.0121
+Epoch 3/5
+ - 408s - loss: 0.0121
+Epoch 4/5
+ - 410s - loss: 0.0121
+Epoch 5/5
+ - 407s - loss: 0.0120
+epoch_cnt: 31, time: 2077.87s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 40.8, LR:0.1, seld_score (early stopping score): 0.81, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 413s - loss: 0.0119
+Epoch 2/5
+ - 408s - loss: 0.0118
+Epoch 3/5
+ - 408s - loss: 0.0118
+Epoch 4/5
+ - 408s - loss: 0.0118
+Epoch 5/5
+ - 408s - loss: 0.0117
+epoch_cnt: 32, time: 2078.16s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.1, LE: 32.8, LR:0.1, seld_score (early stopping score): 0.80, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 412s - loss: 0.0117
+Epoch 2/5
+ - 408s - loss: 0.0117
+Epoch 3/5
+ - 408s - loss: 0.0117
+Epoch 4/5
+ - 408s - loss: 0.0116
+Epoch 5/5
+ - 409s - loss: 0.0117
+epoch_cnt: 33, time: 2076.43s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.1, LE: 31.9, LR:0.1, seld_score (early stopping score): 0.79, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 412s - loss: 0.0116
+Epoch 2/5
+ - 409s - loss: 0.0115
+Epoch 3/5
+ - 409s - loss: 0.0115
+Epoch 4/5
+ - 409s - loss: 0.0115
+Epoch 5/5
+ - 409s - loss: 0.0114
+epoch_cnt: 34, time: 2080.40s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 34.9, LR:0.1, seld_score (early stopping score): 0.80, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 413s - loss: 0.0114
+Epoch 2/5
+ - 408s - loss: 0.0114
+Epoch 3/5
+ - 408s - loss: 0.0114
+Epoch 4/5
+ - 409s - loss: 0.0113
+Epoch 5/5
+ - 409s - loss: 0.0114
+epoch_cnt: 35, time: 2078.74s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.1, LE: 39.5, LR:0.1, seld_score (early stopping score): 0.80, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 412s - loss: 0.0113
+Epoch 2/5
+ - 441s - loss: 0.0112
+Epoch 3/5
+ - 409s - loss: 0.0112
+Epoch 4/5
+ - 410s - loss: 0.0112
+Epoch 5/5
+ - 410s - loss: 0.0111
+epoch_cnt: 36, time: 2114.59s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 55.5, LR:0.1, seld_score (early stopping score): 0.83, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 413s - loss: 0.0112
+Epoch 2/5
+ - 410s - loss: 0.0111
+Epoch 3/5
+ - 410s - loss: 0.0111
+Epoch 4/5
+ - 410s - loss: 0.0110
+Epoch 5/5
+ - 410s - loss: 0.0110
+epoch_cnt: 37, time: 2083.34s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.1, LE: 34.9, LR:0.1, seld_score (early stopping score): 0.80, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 413s - loss: 0.0110
+Epoch 2/5
+ - 410s - loss: 0.0109
+Epoch 3/5
+ - 408s - loss: 0.0109
+Epoch 4/5
+ - 409s - loss: 0.0109
+Epoch 5/5
+ - 409s - loss: 0.0109
+epoch_cnt: 38, time: 2080.76s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.1, LE: 34.7, LR:0.1, seld_score (early stopping score): 0.80, best_seld_score: 0.77, best_epoch : 30
+
+Epoch 1/5
+ - 412s - loss: 0.0108
+Epoch 2/5
+ - 408s - loss: 0.0109
+Epoch 3/5
+ - 409s - loss: 0.0108
+Epoch 4/5
+ - 409s - loss: 0.0108
+Epoch 5/5
+ - 408s - loss: 0.0108
+epoch_cnt: 39, time: 2078.68s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.1, LE: 38.4, LR:0.1, seld_score (early stopping score): 0.80, best_seld_score: 0.77, best_epoch : 30
+
+
+Results on validation split:
+	Unique_name: ./models/2_1_mic_dev_split6 
+	Saved model for the best_epoch: 30
+	SELD_score (early stopping score) : 0.7720935141091783
+
+	DCASE2021 scores
+	Class-aware localization scores: Localization Error: 16.0, Localization Recall: 0.0
+	Location-aware detection scores: Error rate: 1.00, F-score: 0.0
+
+Loading the best model and predicting results on the testing split
+	Loading testing dataset:
+	Datagen_mode: dev, nb_files: 100, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: 6
+	batch_size: 10, feat_seq_len: 300, label_seq_len: 60, shuffle: False
+	Total batches in dataset: 100
+	label_dir: ./seld_feat_label/mic_dev_label
+ 	feat_dir: ./seld_feat_label/mic_dev_norm
+
+Dumping recording-wise test results in: ./results/2_mic_dev_test
+Results on test split:
+	DCASE2021 Scores
+	Class-aware localization scores: Localization Error: 46.1, Localization Recall: 0.0
+	Location-aware detection scores: Error rate: 1.00, F-score: 0.0
+	SELD (early stopping metric): 0.81
