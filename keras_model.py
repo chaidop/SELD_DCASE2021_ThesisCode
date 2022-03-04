@@ -2,13 +2,11 @@
 # The SELDnet architecture
 #
 ########## CHANGED import keras. ... to import tensorflow.keras....
-#import tensorflow
-#from tensorflow import keras
-
-#import tensorflow.keras
+from tensorflow import keras
+import pdb
 from keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
-from keras.layers.recurrent import GRU
+from keras.layers.recurrent import GRU, LSTM
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras.layers.wrappers import TimeDistributed
@@ -18,21 +16,33 @@ import keras
 keras.backend.set_image_data_format('channels_first')
 from IPython import embed
 import numpy as np
+import os
+from tensorflow.compat.v1 import ConfigProto, InteractiveSession
+"""
+config = ConfigProto()
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
+"""
+#gpu cant run any model, so use cpu with: 
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"  
 
+#from tensorflow.keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, ZeroPadding2D, AveragePooling2D, Flatten, Add, Dense, Activation, Dropout, Reshape, Permute
 
-from keras import backend as K
-K.tensorflow_backend._get_available_gpus()
+#from tensorflow.keras.layers import GRU
+#from keras.layers.normalization import BatchNormalization
 
+#from tensorflow.keras.layers import TimeDistributed
+
+#from tensorflow.keras.optimizers import Adam
+
+import tensorflow.keras
+#tf.keras.backend.set_image_data_format('channels_first')
 from numba import jit, cuda
 
-import tensorflow as tf
+#import tensorflow as tf
 #physical_devices = tf.config.experimental.list_physical_devices('GPU')
 #for device in physical_devices:
 #    tf.config.experimental.set_memory_growth(device, True)
-
-sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
-from tensorflow.python.client import device_lib
-print(device_lib.list_local_devices())
 ''' 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -44,131 +54,207 @@ configuration.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=configuration)
 '''
 def res_identity(x, filters):
-  #renet block where dimension doesnot change.
-  #The skip connection is just simple identity conncection
-  #we will have 3 blocks and then input will be added
+    #renet block where dimension doesnot change.
+    #The skip connection is just simple identity conncection
+    #we will have 3 blocks and then input will be added
 
-  x_skip = x # this will be used for addition with the residual block
-  f1, f2 = filters
-  print("\n--------IDENTITY---------\n")
-  #first block
-  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  print(x)
-  x = BatchNormalization()(x)
-  print(x)
-  x = Activation('relu')(x)
-  print(x)
-  #second block # bottleneck (but size kept same with padding)
-  #x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  #x = BatchNormalization()(x)
-  #x = Activation('relu')(x)
+    x_skip = x # this will be used for addition with the residual block
+    f1, f2 = filters
+    print("\n--------IDENTITY---------\n")
+    #first block
+    x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+    print(x)
+    x = BatchNormalization()(x)
+    print(x)
+    x = Activation('relu')(x)
+    print(x)
+    #second block # bottleneck (but size kept same with padding)
+    #x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+    #x = BatchNormalization()(x)
+    #x = Activation('relu')(x)
 
-  # third block activation used after adding the input
-  x = Conv2D(f2, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  print(x)
-  x = BatchNormalization()(x)
-  print(x)
-  # x = Activation(activations.relu)(x)
+    # third block activation used after adding the input
+    x = Conv2D(f2, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+    print(x)
+    x = BatchNormalization()(x)
+    print(x)
+    # x = Activation(activations.relu)(x)
 
-  # add the input
-  x = Add()([x, x_skip])
-  print(x)
-  x = Activation('relu')(x)
-  print(x)
+    # add the input
+    x = Add()([x, x_skip])
+    print(x)
+    x = Activation('relu')(x)
+    print(x)
 
-  return x
+    return x
+
+def res_identity18(x, filters):
+    #renet block where dimension doesnot change.
+    #The skip connection is just simple identity conncection
+    #we will have 3 blocks and then input will be added
+    # copy tensor to variable called x_skip
+    x_skip = x
+    f1, f2 = filters
+    # Layer 1
+    x = Conv2D(f1, (3,3), padding = 'same')(x)
+    x = BatchNormalization(axis=3)(x)
+    x = Activation('relu')(x)
+    # Layer 2
+    x = Conv2D(f1, (3,3), padding = 'same')(x)
+    x = BatchNormalization(axis=3)(x)
+
+    # Add Residue
+    x = Add()([x, x_skip])
+    print(x)
+    x = Activation('relu')(x)
+    print(x)
+
+    return x
 
 def res_conv(x, s, filters):
-  '''
-  here the input size changes'''
-  x_skip = x
-  f1, f2 = filters
-  print('\n------------ CONV BLOCK ------------\n')
-  # first block
-  x = Conv2D(f1, kernel_size=(3,3), strides=(s, s), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  print(x)
-  # when s = 2 then it is like downsizing the feature map
-  x = BatchNormalization()(x)
-  print(x)
-  x = Activation('relu')(x)
-  print(x)
+    '''
+    here the input size changes'''
+    x_skip = x
+    f1, f2 = filters
+    print('\n------------ CONV BLOCK ------------\n')
+    # first block
+    x = Conv2D(f1, kernel_size=(3,3), strides=(s, s), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+    print(x)
+    # when s = 2 then it is like downsizing the feature map
+    x = BatchNormalization()(x)
+    print(x)
+    x = Activation('relu')(x)
+    print(x)
 
-  # second block
-  #x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  #x = BatchNormalization()(x)
-  #x = Activation('relu')(x)
+    # second block
+    #x = Conv2D(f1, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+    #x = BatchNormalization()(x)
+    #x = Activation('relu')(x)
 
-  #third block
-  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
-  print(x)
-  x = BatchNormalization()(x)
-  print(x)
+    #third block
+    x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+    print(x)
+    x = BatchNormalization()(x)
+    print(x)
 
-  # shortcut, Processing Residue with conv(1,1)
-  x_skip = Conv2D(f2, kernel_size=(1, 1), strides=(s, s), kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x_skip)
-  print(x)
-  x_skip = BatchNormalization()(x_skip)
-  print(x)
+    # shortcut, Processing Residue with conv(1,1)
+    x_skip = Conv2D(f2, kernel_size=(1, 1), strides=(s, s), kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x_skip)
+    print(x)
+    x_skip = BatchNormalization()(x_skip)
+    print(x)
 
-  # add
-  x = Add()([x, x_skip])
-  x = Activation('relu')(x)
+    # add
+    x = Add()([x, x_skip])
+    x = Activation('relu')(x)
 
-  return x
+    return x
+
+def res_conv18(x, s, filters):
+    '''
+    here the input size changes'''
+    # copy tensor to variable called x_skip
+    x_skip = x
+    f1, f2 = filters
+    # Layer 1
+    x = Conv2D(f1, kernel_size=(3,3), padding = 'same', strides = (1,1))(x)
+    print("what",x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    # Layer 2
+    x = Conv2D(f1, kernel_size=(3,3), padding = 'same')(x)
+    x = BatchNormalization()(x)
+    # Processing Residue with conv(1,1)
+    x_skip = Conv2D(f1, kernel_size=(1,1), strides = (1,1))(x_skip)
+    # Add Residue
+    x = Add()([x, x_skip])     
+    x = Activation('relu')(x)
+    return x
+
 #implement the Resnet50 architecture
 def resnet50(input_im):
 
-  x = ZeroPadding2D(padding=(3, 3))(input_im)
+    x = ZeroPadding2D(padding=(3, 3))(input_im)
 
-  # 1st stage
-  # here we perform maxpooling, see the figure above
+    # 1st stage
+    # here we perform maxpooling, see the figure above
 
-  x = Conv2D(64, kernel_size=(7, 7), strides=(2, 2))(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D((3, 3), strides=(2, 2))(x)
+    x = Conv2D(64, kernel_size=(7, 7), strides=(2, 2))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D((3, 3), strides=(2, 2))(x)
 
-  #2nd stage
-  # frm here on only conv block and identity block, no pooling
+    #2nd stage
+    # frm here on only conv block and identity block, no pooling
 
-  x = res_conv(x, s=1, filters=(64, 256))
-  x = res_identity(x, filters=(64, 256))
-  x = res_identity(x, filters=(64, 256))
+    x = res_conv(x, s=1, filters=(64, 256))
+    x = res_identity(x, filters=(64, 256))
+    x = res_identity(x, filters=(64, 256))
 
-  # 3rd stage
+    # 3rd stage
 
-  x = res_conv(x, s=2, filters=(128, 512))
-  x = res_identity(x, filters=(128, 512))
-  x = res_identity(x, filters=(128, 512))
-  x = res_identity(x, filters=(128, 512))
+    x = res_conv(x, s=2, filters=(128, 512))
+    x = res_identity(x, filters=(128, 512))
+    x = res_identity(x, filters=(128, 512))
+    x = res_identity(x, filters=(128, 512))
 
-  # 4th stage
+    # 4th stage
 
-  x = res_conv(x, s=2, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
+    x = res_conv(x, s=2, filters=(256, 1024))
+    x = res_identity(x, filters=(256, 1024))
+    x = res_identity(x, filters=(256, 1024))
+    x = res_identity(x, filters=(256, 1024))
+    x = res_identity(x, filters=(256, 1024))
+    x = res_identity(x, filters=(256, 1024))
 
-  # 5th stage
+    # 5th stage
 
-  x = res_conv(x, s=2, filters=(512, 2048))
-  x = res_identity(x, filters=(512, 2048))
-  x = res_identity(x, filters=(512, 2048))
+    x = res_conv(x, s=2, filters=(512, 2048))
+    x = res_identity(x, filters=(512, 2048))
+    x = res_identity(x, filters=(512, 2048))
 
-  # ends with average pooling and dense connection
+    # ends with average pooling and dense connection
 
-  x = AveragePooling2D((2, 2), padding='same')(x)
-  print("128")
-  x = Flatten()(x)
+    x = AveragePooling2D((2, 2), padding='same')(x)
+    print("128")
+    x = Flatten()(x)
 
-  # define the model
+    # define the model
 
-  model = Model(inputs=input_im, outputs=x, name='Resnet50')
+    model = Model(inputs=input_im, outputs=x, name='Resnet50')
 
-  return model
-  
+    return model
+
+#implement the Resnet50 architecture
+def resnet18(input_im):
+    x = input_im
+    #2nd stage
+    # from here on only conv block and identity block, no pooling
+    x = res_conv18(x, s=1, filters=(64, 64))
+    x = res_identity18(x, filters=(64, 64))
+    x = res_identity18(x, filters=(64, 64))
+    print("1",x)
+    # 3rd stage
+    x = res_conv18(x, s=2, filters=(128, 512))
+    x = res_identity18(x, filters=(128, 512))
+    x = res_identity18(x, filters=(128, 512))
+    print("2",x)
+    # 4th stage
+    x = res_conv18(x, s=2, filters=(256, 1024))
+    x = res_identity18(x, filters=(256, 1024))
+    x = res_identity18(x, filters=(256, 1024))
+    print("3",x)
+    # ends with average pooling and dense connection
+    #x = AveragePooling2D((2, 2), padding='same')(x)
+    print(x)
+    print("128")
+    print(x)
+   
+    x = Dropout(0.2)(x)
+    x = Dense(512, activation = 'relu')(x)
+    print(x)
+    x = Dense(12, activation = 'softmax')(x) ## 12 = nb_classes(the total number of sound events)
+
+    return x  
 # function optimized to run on gpu
 #@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
@@ -189,7 +275,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     spec_cnn = spec_start
     print(spec_cnn)
     ###### end #####
-    #spec_cnn = ZeroPadding2D(padding=(2, 2))(spec_cnn)
+    #spec_cnn = ZeroPadding2D(padding=(3, 3))(spec_cnn)
     if model_approach == 0:
         for i, convCnt in enumerate(f_pool_size):
             spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
@@ -199,11 +285,34 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
             spec_cnn = Dropout(dropout_rate)(spec_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
 
+    if model_approach == 1:
+        # 1st stage
+        # here we perform maxpooling, see the figure above
+        x = spec_cnn
+        #x = ZeroPadding2D(padding=(3, 3))(x)
+        x = Conv2D(64, kernel_size=(7, 7), padding='same')(x)
+        print(x)
+        x = BatchNormalization()(x)
+        print(x)
+        x = Activation('relu')(x)
+        print(x)
+        x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
+        print(x)
+        spec_cnn = x
+        print("hello\n")
+        spec_cnn = resnet18(spec_cnn)
+        #added maxpool for rashaping output
+        #spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        print(spec_cnn)
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        print(spec_cnn)
+        ##need to pool to bring sequence to (60,64,2) dimension(seq-len, mel-bands, idk(??))
+        spec_cnn = AveragePooling2D(pool_size=(4,6), padding='same')(spec_cnn)
+        print("pool ",spec_cnn)
+        
     ##### RESNET50 IMPLEMENTATION ##########
     
     if model_approach == 2:
-
-        
         # 1st stage
         # here we perform maxpooling, see the figure above
         x = spec_cnn
@@ -236,8 +345,8 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print(spec_cnn)
         spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
         print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-        print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+        #print(spec_cnn)
 
         #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
         spec_cnn = Dropout(0.2)(spec_cnn)
@@ -251,12 +360,12 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print(spec_cnn)
         spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
         print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        #print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        #print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        #print(spec_cnn)
 
         #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
         spec_cnn = Dropout(0.2)(spec_cnn)
@@ -365,12 +474,15 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     print("data_out[-2]:")
     print(data_out[-2])
     spec_rnn = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
+    print(spec_rnn)
     for nb_rnn_filt in rnn_size:
         spec_rnn = Bidirectional(
             GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                 return_sequences=True),
             merge_mode='mul'
         )(spec_rnn)
+        #LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+                #return_sequences=True)(spec_rnn)
     print(spec_cnn)
     # FC - DOA
     doa = spec_rnn
