@@ -1,0 +1,25 @@
+RESNET 50:
+
+Results on test split (30 epochs), batch 128:
+        DCASE2021 Scores
+        Class-aware localization scores: 
+			Localization Error: 27.2, 
+			Localization Recall: 27.7
+        Location-aware detection scores: 
+			Error rate: 0.79, 
+			F-score: 22.5
+        SELD (early stopping metric): 0.61
+		
+
+Results on test split (50 epochs), batch 256:
+        DCASE2021 Scores
+        Class-aware localization scores: 
+			Localization Error: 29.5, 
+			Localization Recall: 28.7
+        Location-aware detection scores: 
+			Error rate: 0.8, 
+			F-score: 19.5
+        SELD (early stopping metric): 0.63
+		
+Bigger batch, worse??
+
