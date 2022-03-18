@@ -12,19 +12,26 @@ from keras.models import Model
 from keras.layers.wrappers import TimeDistributed
 from keras.optimizers import Adam
 from keras.models import load_model
-import keras
+import keras.backend
 keras.backend.set_image_data_format('channels_first')
+ 
 from IPython import embed
 import numpy as np
 import os
 from tensorflow.compat.v1 import ConfigProto, InteractiveSession
-"""
+
+import torch
+from models import Conformer
+
 config = ConfigProto()
-config.gpu_options.allow_growth = True
+config.gpu_options.allow_growth = 0.5
 session = InteractiveSession(config=config)
-"""
+import keras.backend.tensorflow_backend as K
+K.set_session(session)
+
 #gpu cant run any model, so use cpu with: 
-os.environ["CUDA_VISIBLE_DEVICES"]="-1"  
+#os.environ["CUDA_VISIBLE_DEVICES"]="-1"  
+#device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 #from tensorflow.keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, ZeroPadding2D, AveragePooling2D, Flatten, Add, Dense, Activation, Dropout, Reshape, Permute
 
@@ -39,7 +46,7 @@ import tensorflow.keras
 #tf.keras.backend.set_image_data_format('channels_first')
 from numba import jit, cuda
 
-#import tensorflow as tf
+import tensorflow as tf
 #physical_devices = tf.config.experimental.list_physical_devices('GPU')
 #for device in physical_devices:
 #    tf.config.experimental.set_memory_growth(device, True)
@@ -48,11 +55,11 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 '''
-'''
+"""
 configuration = tf.compat.v1.ConfigProto()
 configuration.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=configuration)
-'''
+"""
 def res_identity(x, filters):
     #renet block where dimension doesnot change.
     #The skip connection is just simple identity conncection
@@ -170,61 +177,87 @@ def res_conv18(x, s, filters):
     x = Activation('relu')(x)
     return x
 
-#implement the Resnet50 architecture
-def resnet50(input_im):
-
-    x = ZeroPadding2D(padding=(3, 3))(input_im)
-
+#implement the Resnet34 architecture
+def resnet34(input_im, nb_cnn2d_filt):
     # 1st stage
     # here we perform maxpooling, see the figure above
-
-    x = Conv2D(64, kernel_size=(7, 7), strides=(2, 2))(x)
+    x = spec_cnn
+    x = Conv2D(64, kernel_size=(7, 7), padding='same')(x)
+    print(x)
     x = BatchNormalization()(x)
+    print(x)
     x = Activation('relu')(x)
-    x = MaxPooling2D((3, 3), strides=(2, 2))(x)
-
-    #2nd stage
+    print(x)
+    x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
+    print(x)
+    spec_cnn = x
+    print("hello\n")
+    print(spec_cnn)
     # frm here on only conv block and identity block, no pooling
-
-    x = res_conv(x, s=1, filters=(64, 256))
-    x = res_identity(x, filters=(64, 256))
-    x = res_identity(x, filters=(64, 256))
-
+    print("\n############ STAGE 1 ##############\n")
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
+    print(spec_cnn)
     # 3rd stage
+    print("\n############ STAGE 2 ##############\n")
+    spec_cnn = res_conv18(spec_cnn, s=1, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2,nb_cnn2d_filt*2))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+    print(spec_cnn)
 
-    x = res_conv(x, s=2, filters=(128, 512))
-    x = res_identity(x, filters=(128, 512))
-    x = res_identity(x, filters=(128, 512))
-    x = res_identity(x, filters=(128, 512))
-
+    #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
+    spec_cnn = Dropout(0.2)(spec_cnn)
     # 4th stage
+    print("\n############ STAGE 3 ##############\n")
+    spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    print(spec_cnn)
 
-    x = res_conv(x, s=2, filters=(256, 1024))
-    x = res_identity(x, filters=(256, 1024))
-    x = res_identity(x, filters=(256, 1024))
-    x = res_identity(x, filters=(256, 1024))
-    x = res_identity(x, filters=(256, 1024))
-    x = res_identity(x, filters=(256, 1024))
-
+    #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
+    spec_cnn = Dropout(0.2)(spec_cnn)
     # 5th stage
+    print("\n############ STAGE 4 ##############\n")
+    spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    print(spec_cnn)
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    print(spec_cnn)
 
-    x = res_conv(x, s=2, filters=(512, 2048))
-    x = res_identity(x, filters=(512, 2048))
-    x = res_identity(x, filters=(512, 2048))
+    print(spec_cnn)
+    spec_cnn = Dropout(0.2)(spec_cnn)
+    spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
+    print(spec_cnn)
+    spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
 
-    # ends with average pooling and dense connection
+    #spec_cnn = Conv2D(nb_cnn2d_filt, kernel_size=(3,3), strides=(1, 2), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(spec_cnn)
+    print(spec_cnn)
 
-    x = AveragePooling2D((2, 2), padding='same')(x)
-    print("128")
-    x = Flatten()(x)
+    return spec_cnn
 
-    # define the model
-
-    model = Model(inputs=input_im, outputs=x, name='Resnet50')
-
-    return model
-
-#implement the Resnet50 architecture
+#implement the Resnet34 architecture
 def resnet18(input_im):
     x = input_im
     #2nd stage
@@ -267,7 +300,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     #physical_devices = tf.config.experimental.list_physical_devices('GPU')
     #tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-    #sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+    sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
     # model definition
     spec_start = Input(shape=(data_in[-3], data_in[-2], data_in[-1]))
 
@@ -276,7 +309,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     print(spec_cnn)
     ###### end #####
     #spec_cnn = ZeroPadding2D(padding=(3, 3))(spec_cnn)
-    if model_approach == 0:
+    if model_approach == 0 or model_approach == 3:
         for i, convCnt in enumerate(f_pool_size):
             spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
             spec_cnn = BatchNormalization()(spec_cnn)
@@ -310,84 +343,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = AveragePooling2D(pool_size=(4,6), padding='same')(spec_cnn)
         print("pool ",spec_cnn)
         
-    ##### RESNET50 IMPLEMENTATION ##########
+    ##### Resnet34 IMPLEMENTATION ##########
     
     if model_approach == 2:
-        # 1st stage
-        # here we perform maxpooling, see the figure above
-        x = spec_cnn
-        x = Conv2D(64, kernel_size=(7, 7), padding='same')(x)
-        print(x)
-        x = BatchNormalization()(x)
-        print(x)
-        x = Activation('relu')(x)
-        print(x)
-        x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
-        print(x)
-        spec_cnn = x
-        print("hello\n")
-        print(spec_cnn)
-        # frm here on only conv block and identity block, no pooling
-        print("\n############ STAGE 1 ##############\n")
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
-        print(spec_cnn)
-        # 3rd stage
-        print("\n############ STAGE 2 ##############\n")
-        spec_cnn = res_conv(spec_cnn, s=1, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2,nb_cnn2d_filt*2))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-        print(spec_cnn)
-        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-        #print(spec_cnn)
-
-        #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
-        spec_cnn = Dropout(0.2)(spec_cnn)
-        # 4th stage
-        print("\n############ STAGE 3 ##############\n")
-        spec_cnn = res_conv(spec_cnn, s=2, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        #print(spec_cnn)
-        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        #print(spec_cnn)
-        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        #print(spec_cnn)
-
-        #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
-        spec_cnn = Dropout(0.2)(spec_cnn)
-        # 5th stage
-        print("\n############ STAGE 4 ##############\n")
-        spec_cnn = res_conv(spec_cnn, s=2, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-        print(spec_cnn)
-
-        print(spec_cnn)
-        spec_cnn = Dropout(0.2)(spec_cnn)
-        spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
-        print(spec_cnn)
-        spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
-
-        #spec_cnn = Conv2D(nb_cnn2d_filt, kernel_size=(3,3), strides=(1, 2), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(spec_cnn)
-        print(spec_cnn)
+        spec_cnn = resnet34(spec_cnn)
         # ends with average pooling and dense connection
         #spec_cnn = BatchNormalization()(spec_cnn)
         #spec_cnn = Activation('relu')(spec_cnn)
@@ -462,13 +421,18 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     
     ####
     
-    model = keras.applications.ResNet50(
+    model = keras.applications.Resnet34(
         include_top=True, weights=None, input_tensor=spec_cnn,
         input_shape=None, pooling=max, classes=12,
     )
     """
     
-########### END RESNET 50 ######################
+    ########### END RESNET 34 ######################
+    if model_approach == 3:
+        model = Conformer(spec_cnn)
+        print(model)
+        spec_cnn = model( spec_cnn)
+
     # RNN
     print(spec_cnn)
     print("data_out[-2]:")
