@@ -4,7 +4,7 @@
 ########## CHANGED import keras. ... to import tensorflow.keras....
 from tensorflow import keras
 import pdb
-from keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
+from keras.layers import Lambda,Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
 from keras.layers.recurrent import GRU, LSTM
 from keras.layers.normalization import BatchNormalization
@@ -21,40 +21,34 @@ import os
 from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 
 import torch
-from models import Conformer
+from models import Conformer, Conformer_fun
 
 config = ConfigProto()
 config.gpu_options.allow_growth = 0.5
 session = InteractiveSession(config=config)
 import keras.backend.tensorflow_backend as K
-K.set_session(session)
+#K.set_session(session)
 
 #gpu cant run any model, so use cpu with: 
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1"  
 #device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-#from tensorflow.keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, ZeroPadding2D, AveragePooling2D, Flatten, Add, Dense, Activation, Dropout, Reshape, Permute
-
-#from tensorflow.keras.layers import GRU
-#from keras.layers.normalization import BatchNormalization
-
-#from tensorflow.keras.layers import TimeDistributed
-
-#from tensorflow.keras.optimizers import Adam
-
 import tensorflow.keras
 #tf.keras.backend.set_image_data_format('channels_first')
 from numba import jit, cuda
 
+print("EEEEEEEEEEEEEEEEEEEEEEEEEEE")
 import tensorflow as tf
-#physical_devices = tf.config.experimental.list_physical_devices('GPU')
-#for device in physical_devices:
-#    tf.config.experimental.set_memory_growth(device, True)
-''' 
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+for device in physical_devices:
+    tf.config.experimental.set_memory_growth(device, True)
+
+'''
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 '''
+
 """
 configuration = tf.compat.v1.ConfigProto()
 configuration.gpu_options.allow_growth = True
@@ -178,19 +172,9 @@ def res_conv18(x, s, filters):
     return x
 
 #implement the Resnet34 architecture
-def resnet34(input_im, nb_cnn2d_filt):
+def resnet34(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
     # 1st stage
     # here we perform maxpooling, see the figure above
-    x = spec_cnn
-    x = Conv2D(64, kernel_size=(7, 7), padding='same')(x)
-    print(x)
-    x = BatchNormalization()(x)
-    print(x)
-    x = Activation('relu')(x)
-    print(x)
-    x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
-    print(x)
-    spec_cnn = x
     print("hello\n")
     print(spec_cnn)
     # frm here on only conv block and identity block, no pooling
@@ -292,24 +276,26 @@ def resnet18(input_im):
 #@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
               rnn_size, fnn_size, weights, doa_objective, is_accdoa,
-              model_approach): ####### CUSTOM CODE
+              model_approach, 
+              dconv_kernel_size,
+              nb_conf): ####### CUSTOM CODE
 
     #tf.config.experimental.list_physical_devices('GPU')
     #tf.debugging.set_log_device_placement(True)
 
-    #physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    physical_devices = tf.config.experimental.list_physical_devices('GPU')
     #tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
     sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
     # model definition
     spec_start = Input(shape=(data_in[-3], data_in[-2], data_in[-1]))
-
+    print("data in ", data_in)
     # CNN
     spec_cnn = spec_start
     print(spec_cnn)
     ###### end #####
     #spec_cnn = ZeroPadding2D(padding=(3, 3))(spec_cnn)
-    if model_approach == 0 or model_approach == 3:
+    if model_approach == 0:
         for i, convCnt in enumerate(f_pool_size):
             spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
             spec_cnn = BatchNormalization()(spec_cnn)
@@ -318,7 +304,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
             spec_cnn = Dropout(dropout_rate)(spec_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
 
-    if model_approach == 1:
+    if model_approach == 1 or model_approach == 2:
         # 1st stage
         # here we perform maxpooling, see the figure above
         x = spec_cnn
@@ -333,8 +319,11 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print(x)
         spec_cnn = x
         print("hello\n")
-        spec_cnn = resnet18(spec_cnn)
-        #added maxpool for rashaping output
+        if model_approach == 1:
+            spec_cnn = resnet18(spec_cnn)
+        elif model_approach == 2:
+            spec_cnn = resnet34(t_pool_size,f_pool_size,spec_cnn, nb_cnn2d_filt)
+        #added maxpool for reshaping output
         #spec_cnn = Permute((2, 1, 3))(spec_cnn)
         print(spec_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
@@ -344,9 +333,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print("pool ",spec_cnn)
         
     ##### Resnet34 IMPLEMENTATION ##########
-    
-    if model_approach == 2:
-        spec_cnn = resnet34(spec_cnn)
+    ### 23/03/2022:: put code for this in above 'if' option
+    ##this is the original that i run for the results in eidiko thema
+    if model_approach == 200:
+        spec_cnn = resnet34(t_pool_size,f_pool_size,spec_cnn, nb_cnn2d_filt)
         # ends with average pooling and dense connection
         #spec_cnn = BatchNormalization()(spec_cnn)
         #spec_cnn = Activation('relu')(spec_cnn)
@@ -429,9 +419,46 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     
     ########### END RESNET 34 ######################
     if model_approach == 3:
+        print("INITIAL SHAPE ", spec_cnn)
+        ###(10, 300, 64) (CHANNELS, timesteps(sequence length per sample), mel-spectogramms per audio file)
+        ### subsampling (DCASE2021_Zhang_67_t3.pdf)
+        spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+        print("(64, 300, 64) ",spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(5,4))(spec_cnn)
+        print("(64, 60, 16) ", spec_cnn)
+        ###(64, 60, 16)
+        spec_cnn = Conv2D(128, kernel_size=(3, 3), padding='same')(spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(1,4))(spec_cnn)
+        ###(128, 60, 4)
+        spec_cnn = Conv2D(256, kernel_size=(3, 3), padding='same')(spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(1,2))(spec_cnn)
+        ###(256, 60, 2)
+        ### Conformer
+        print("Before conformer ", spec_cnn)
         model = Conformer(spec_cnn)
-        print(model)
-        spec_cnn = model( spec_cnn)
+        print("model printed")
+        ##Zhang and Ko use 2 and 3 conformers respectively
+        #for i in range(depth):
+        spec_cnn = model( spec_cnn, dconv_kernel_size=dconv_kernel_size)
+        
+        #spec_cnn = Conformer_fun( spec_cnn, dconv_kernel_size=dconv_kernel_size) #(None, 256, 60, 2)
+        print("Conformer out ", spec_cnn.shape)
+        ###### RESHAPING (60,512) ########
+        permuter=Lambda(lambda x: K.permute_dimensions(x, (0,2,1,3))) #(None, 60, 256, 2)
+        spec_cnn = permuter(spec_cnn)  
+        spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-2]*spec_cnn.shape[-1]))(spec_cnn)#(None, 60, 512)
+        print("Lambda out ", spec_cnn.shape) 
+        ###### DENSE LAYERS #########
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
+        spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
+        #Dense(36, activation = 'tanh')(spec_cnn)
+        print(spec_cnn)
 
     # RNN
     print(spec_cnn)
