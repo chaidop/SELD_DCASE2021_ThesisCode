@@ -1,0 +1,72 @@
+-----------26/02/2022
+
+Found and copied the resnets 32 output i have done in december and created
+a resnet_output folder. Looked into reports on dcase for next neural implementation
+(Ngyuen, Lee, and 1st place winner. Also diplwmatikh 2019)
+
+->>>Use conformer
+
+Experimented with keras and tensorflow versions to run gpu
+->>paradox: need keras 2.3.1 to run layers BUT keras 2.3.1 compatible with tensorflow 2.2.0
+BUT cuda supported version needs tensorflow 2.4.0 to run.........
+
+LOOK INTO->all about attention, article
+ccheck input shapes and feature extraction
+
+NEXT: use conformer network
+Or parallel doa and seld
+
+upgraded to keras 2.4.0 incompatible...
+
+------------28/02/2022
+Tensorflow 2.4.0
+Tensorflow-gpu:2.3.0
+Keras 2.4.0
+
+Try and download libcudnn.so.7->not possible
+
+NOTE::::: To write on diplwmatikh: the resemblance of image recognition and sound recognition
+How same networks can be used if sound is transformed to some sort of image
+
+Maybe also note results on pretrained models (in keras or pytorch)
+also note difference on pytorch and keras models
+
+I WILL TRY PYTORCH
+
+I want to make 2 (or 3) different networks
+and change small values in them to note the results.
+1 network is ResNet 32->implemented
+2nd network is parallel doa and sed with crnn (Nguyen approach, see bellow) and Multi self attetnion layer
+(forts, get results on parallel then on MHSA and then on combination), Encoder-Decoder
+3rd could be Conformer implementation
+
+After all 3 architectures done, i will experiment on different batch sizes,
+different parameters etc... and plot results for all
+
+I can also use combination of above designs(specificaly renset with sth else)
+and make ensemble method (4th approach)
+
+APPROACH:  DCASE 2021 TASK 3: SPECTROTEMPORALLY-ALIGNED FEATURES FOR POLYPHONIC SOUND EVENT LOCALIZATION AND DETECTION 
+Nguyen
+SOUND EVENT LOCALIZATION AND DETECTION USING CROSS-MODAL ATTENTION AND PARAMETER SHARING FOR DCASE2021 CHALLENGE 
+Lee
+
+CNN that is based on ResNet22 for audio tagging, a two-layer BiGRU, and fully connected (FC) layers.
+
+RUN BASELINE, instead of bi-GRU use LSTM->>>>> results to be seen
+
+================================================
+TO DO::::::::::: 
+1)CODE CLEANUP->>>>Create separate classes for each architecture(RESNET18)
+2)CHECK BASELINE AND SHAPE OF INPUT OUTPUT
+3)next architecture:::::: TRansformer encoder-decoder (COnformer, my 3rd approach, 2nd not yet implemented tho)
+4)Soon: PARAMETER SHARING, FROM Lee. Also look "An improved event-independent network for pol-
+yphonic sound event localization and detection",
+
+ALSO LOOK INTO Nguyen DATA AUGMENTATION: https://github.com/thomeou/SALSA/blob/master/utilities/transforms.py
+https://arxiv.org/pdf/2010.01733.pdf
+
+All you need is attetnion::
+https://www.youtube.com/watch?v=iDulhoQ2pro
+1:10
+encoder turns input to hidden state vector
