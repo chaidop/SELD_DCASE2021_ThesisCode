@@ -3,6 +3,7 @@ import configparser
 from warnings import filters
 from keras import backend as K
 import keras
+from matplotlib.pyplot import axis
 from sklearn.preprocessing import scale
 import tensorflow as tf
 #import tensorflow.keras
@@ -50,6 +51,7 @@ class MultiHeadAttention(keras.layers.Layer):
 
     ##d_model is output dimensions
     x = tf.reshape(x, (batch_size, x.shape[-2], self.num_heads, self.depth))##original was -1 instead of 60 (2nd place)
+    print(x)
     return tf.transpose(x, perm=[0, 2, 1, 3])
 
   def call(self, inputs, v, k, q , mask, pos_embedding):
@@ -93,8 +95,14 @@ def split_heads(x, batch_size, num_heads, depth):
     """
 
     ##d_model is output dimensions
-    x = tf.reshape(x, (batch_size, x.shape[-2], num_heads, depth))##original was -1 instead of 60 (2nd place)
-    return tf.transpose(x, perm=[0, 2, 1, 3])
+    #x = Reshape((-1, x.shape[-2], num_heads, depth))(x )##original was -1 instead of 60 (2nd place)
+    #print(x)
+    #trans = Lambda(lambda x: K.permute_dimensions(x, (0, 1, 3, 2, 4)))
+    #x = trans(x)
+    x = Reshape((batch_size, x.shape[-2], num_heads, depth))(x)##original was -1 instead of 60 (2nd place)
+    print(x)
+    x = Lambda(lambda x: K.permute_dimensions(x, (0, 1, 3, 2, 4)))(x)
+    return x
 
 def MultiHeadAttention_fun( q, v, k, pos_embedding, num_heads = 8, dim_head = 64):
     d_model = num_heads*dim_head
@@ -117,8 +125,10 @@ def MultiHeadAttention_fun( q, v, k, pos_embedding, num_heads = 8, dim_head = 64
     v = split_heads(v, batch_size, num_heads, dim_head)  # (batch_size, num_heads, seq_len_v, depth)
 
     pos_emb = dense(pos_embedding)#(batch_size, 10000, d_model)
-    pos_emb = split_heads(pos_emb,pos_emb.shape[0], num_heads, dim_head)#(batch_size, num_heads, seq_len_v, depth)
-
+    print("POS EMB SHAPE ", pos_emb.shape)
+    pos_emb = split_heads(pos_emb, pos_emb.shape[0], num_heads, dim_head)#(batch_size, num_heads, seq_len_v, depth)
+    print("POS SPLIT EMB SHAPE ", pos_emb.shape)#(batch_size, num_heads, seq_len_v, depth)
+    #pos_emb = Reshape((pos_emb.shape[-3],pos_emb.shape[-2],pos_emb.shape[-1]))(pos_emb)
     # scaled_attention.shape == (batch_size, num_heads, seq_len_q, depth)
     # attention_weights.shape == (batch_size, num_heads, seq_len_q, seq_len_k)
     scaled_attention, attention_weights = scaled_dot_product_attention(
@@ -126,11 +136,12 @@ def MultiHeadAttention_fun( q, v, k, pos_embedding, num_heads = 8, dim_head = 64
     #
     scaled_attention = Dropout(0.2)(scaled_attention)
     #scaled_attention =  K.transpose(scaled_attention, perm=[0, 2, 1, 3])  # (batch_size, seq_len_q, num_heads, depth)
-    permuter = Lambda(lambda x: K.permute_dimensions(x, (0,2,1,3)))
+    permuter = Lambda(lambda x: K.permute_dimensions(x, (0,1,3,2,4)))
     scaled_attention = permuter(scaled_attention)
-    concat_attention = Reshape((-1 , d_model))(scaled_attention )  # (batch_size, seq_len_q, d_model)
+    concat_attention = Reshape((scaled_attention.shape[1],scaled_attention.shape[-3] , d_model))(scaled_attention )  # (batch_size, seq_len_q, d_model)
+    print(concat_attention)
     #scaled_attention = Permute((2,3,1))(scaled_attention)
-
+    print(scaled_attention)
     output = dense(concat_attention)  # (batch_size, seq_len_q, d_model)
 
     return output, attention_weights
@@ -268,13 +279,12 @@ def scaled_dot_product_attention(input_vector, pos_emb):
     #postitional_encoding*Q
     pose = tf.matmul(Q,pos_emb, transpose_b=True) #(...,..., seq_len, seq_len_posemb)
     #pose = tf.transpose(pose , perm=[0, 1, 3, 2])
-
-    product = (QK_mult + pose[:,:,:,:QK_mult.shape[-1]] )/tf.math.sqrt(dk)
+    pose_cut = pose[:,:,:,:,:QK_mult.shape[-1]]
+    product = (QK_mult + pose_cut )/tf.math.sqrt(dk)
     print(product)
     ## the scaled self attention equation (page 4, "Attention is all you need")
     attention_weights = tf.nn.softmax(product, axis=-1)#(...,..., seq_len, seq_len)
     attention = tf.matmul(attention_weights, V)#(...,..., seq_len, depth)
-
     return attention, attention_weights
 
     def compute_output_shape(self, input_shape):
@@ -308,7 +318,8 @@ class Conformer(Layer):
         spec_cnn = ConvolutionModule(spec_cnn, 512, dconv_kernel_size)
         print(spec_cnn)
         #######################
-        spec_cnn = spec_cnn + FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
+        temp = FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
+        spec_cnn = Add()([spec_cnn , temp]) 
         spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
         print(spec_cnn)
         return spec_cnn
@@ -326,7 +337,7 @@ def Conformer_fun(spec_cnn, dconv_kernel_size):
     #output_tensor, weights = mhsa1(spec_cnn, q=spec_cnn, v=spec_cnn, k=spec_cnn, mask= 1)
     output_tensor, weights = MultiHeadAttentionModule_fun(inputs = spec_cnn, num_heads=8, dim_head=64 )
     output_tensor = Dense(spec_cnn.shape[-1])(output_tensor)
-    spec_cnn = spec_cnn + output_tensor
+    spec_cnn = Add()([spec_cnn , output_tensor])
     print(spec_cnn)
     #######################
     spec_cnn = ConvolutionModule(spec_cnn, 512, dconv_kernel_size)
@@ -356,7 +367,8 @@ def FeedForward(spec_cnn, encoder_dim: int = 512,
     spec_cnn = Dropout(0.02)(spec_cnn)    
     spec_cnn = Dense(encoder_dim, activation = None)(spec_cnn)
     print("FFN SHAPE ", spec_cnn)
-    return temp+spec_cnn
+    added = Add()([temp, spec_cnn])
+    return added
 
 def ConvolutionModule(spec_cnn, nb_cnn2d_filt, dconv_kernel_size: int = 31):
     temp = spec_cnn
@@ -377,7 +389,9 @@ def ConvolutionModule(spec_cnn, nb_cnn2d_filt, dconv_kernel_size: int = 31):
     spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(1,1), padding='same')(spec_cnn)
     spec_cnn = Dropout(0.02)(spec_cnn)
     spec_cnn = Reshape((temp.shape[-3], spec_cnn.shape[-2],temp.shape[-1]))(spec_cnn)
-    return temp+spec_cnn
+    print(spec_cnn)
+    add = Add()([temp, spec_cnn])
+    return add
 
 ##from https://colab.research.google.com/github/tensorflow/text/blob/master/docs/tutorials/transformer.ipynb?hl=ro#scrollTo=jpEox7gJ8FCI
 def get_angles(pos, i, d_model):
