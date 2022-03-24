@@ -23,17 +23,21 @@ from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 import torch
 from models import Conformer, Conformer_fun
 
+'''
 config = ConfigProto()
 config.gpu_options.allow_growth = 0.5
 session = InteractiveSession(config=config)
+'''
+
 import keras.backend.tensorflow_backend as K
 #K.set_session(session)
 
 #gpu cant run any model, so use cpu with: 
-#os.environ["CUDA_VISIBLE_DEVICES"]="-1"  
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"  
 #device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 import tensorflow.keras
+import keras
 #tf.keras.backend.set_image_data_format('channels_first')
 from numba import jit, cuda
 
@@ -286,13 +290,14 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     physical_devices = tf.config.experimental.list_physical_devices('GPU')
     #tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-    sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+    #sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+    
     # model definition
     spec_start = Input(shape=(data_in[-3], data_in[-2], data_in[-1]))
     print("data in ", data_in)
     # CNN
     spec_cnn = spec_start
-    print(spec_cnn)
+    #print(spec_cnn)
     ###### end #####
     #spec_cnn = ZeroPadding2D(padding=(3, 3))(spec_cnn)
     if model_approach == 0:
@@ -419,15 +424,15 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     
     ########### END RESNET 34 ######################
     if model_approach == 3:
-        print("INITIAL SHAPE ", spec_cnn)
+        #print("INITIAL SHAPE ", spec_cnn)
         ###(10, 300, 64) (CHANNELS, timesteps(sequence length per sample), mel-spectogramms per audio file)
         ### subsampling (DCASE2021_Zhang_67_t3.pdf)
-        spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
-        print("(64, 300, 64) ",spec_cnn)
+        spec_cnn = keras.layers.Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+        #print("(64, 300, 64) ",spec_cnn)
         spec_cnn = BatchNormalization()(spec_cnn)
         spec_cnn = Activation('relu')(spec_cnn)
         spec_cnn = MaxPooling2D(pool_size=(5,4))(spec_cnn)
-        print("(64, 60, 16) ", spec_cnn)
+        #print("(64, 60, 16) ", spec_cnn)
         ###(64, 60, 16)
         spec_cnn = Conv2D(128, kernel_size=(3, 3), padding='same')(spec_cnn)
         spec_cnn = BatchNormalization()(spec_cnn)
@@ -440,7 +445,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = MaxPooling2D(pool_size=(1,2))(spec_cnn)
         ###(256, 60, 2)
         ### Conformer
-        print("Before conformer ", spec_cnn)
+        #print("Before conformer ", spec_cnn)
         model = Conformer(spec_cnn)
         print("model printed")
         ##Zhang and Ko use 2 and 3 conformers respectively
@@ -458,10 +463,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
         spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
         #Dense(36, activation = 'tanh')(spec_cnn)
-        print(spec_cnn)
+        #print(spec_cnn)
 
     # RNN
-    print(spec_cnn)
+    #print(spec_cnn)
     print("data_out[-2]:")
     print(data_out[-2])
     spec_rnn = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
