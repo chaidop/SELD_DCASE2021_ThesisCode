@@ -8,8 +8,8 @@ def get_params(argv='1'):
     print("SET: {}".format(argv))
     # ########### default parameters ##############
     params = dict(
-        model_approach = 0,
-        quick_test=False,           # If True: Trains/test on small subset of dataset, and # of epochs
+        model_approach = 3,
+        quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
 
         # INPUT PATH
         dataset_dir='./input_data',  # Base folder containing the foa_dev/mic_dev and metadata folders
@@ -20,7 +20,7 @@ def get_params(argv='1'):
         dcase_output_dir='./results/',    # recording-wise results are dumped in this path.
 
         # DATASET LOADING PARAMETERS
-        mode='dev',          # 'dev' - development or 'eval' - evaluation dataset
+        mode='eval',          # 'dev' - development or 'eval' - evaluation dataset
         dataset='mic',       # 'foa' - ambisonic or 'mic' - microphone signals
 
         #FEATURE PARAMS
@@ -28,16 +28,16 @@ def get_params(argv='1'):
         hop_len_s=0.02,
         label_hop_len_s=0.1,
         max_audio_len_s=60,
-        nb_mel_bins=64,
+        nb_mel_bins=64,#original 64
 
         # DNN MODEL PARAMETERS
         is_accdoa=True,             # True: Use ACCDOA output format
         doa_objective='mse',        # if is_accdoa=True this is ignored, otherwise it supports: mse, masked_mse. where mse- original seld approach; masked_mse - dcase 2020 approach
 
         label_sequence_length=60,   # Feature sequence length
-        batch_size=128,             # Batch size ###############ORIGINAL 256
+        batch_size=256,             # Batch size ###############ORIGINAL 256
         dropout_rate=0.05,          # Dropout rate, constant for all layers
-        nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer
+        nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer#original 64
         f_pool_size=[4, 4, 2],      # CNN frequency pooling, length of list = number of CNN layers, list value = pooling per layer
 
         rnn_size=[128, 128],        # RNN contents, length of list = number of layers, list value = number of nodes

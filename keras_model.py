@@ -5,10 +5,10 @@
 #import tensorflow
 #from tensorflow import keras
 
-#import tensorflow.keras
+import tensorflow.keras
 from keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
-from keras.layers.recurrent import GRU
+from keras.layers.recurrent import GRU, LSTM
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras.layers.wrappers import TimeDistributed
@@ -18,10 +18,11 @@ import keras
 keras.backend.set_image_data_format('channels_first')
 from IPython import embed
 import numpy as np
+from neural_models.models import Conformer, Conformer_fun
 
 
 from keras import backend as K
-K.tensorflow_backend._get_available_gpus()
+#K.tensorflow_backend._get_available_gpus()
 
 from numba import jit, cuda
 
@@ -52,7 +53,7 @@ def res_identity(x, filters):
   f1, f2 = filters
   print("\n--------IDENTITY---------\n")
   #first block
-  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tf.keras.regularizers.l2(0.001))(x)
   print(x)
   x = BatchNormalization()(x)
   print(x)
@@ -64,7 +65,7 @@ def res_identity(x, filters):
   #x = Activation('relu')(x)
 
   # third block activation used after adding the input
-  x = Conv2D(f2, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f2, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tf.keras.regularizers.l2(0.001))(x)
   print(x)
   x = BatchNormalization()(x)
   print(x)
@@ -85,7 +86,7 @@ def res_conv(x, s, filters):
   f1, f2 = filters
   print('\n------------ CONV BLOCK ------------\n')
   # first block
-  x = Conv2D(f1, kernel_size=(3,3), strides=(s, s), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f1, kernel_size=(3,3), strides=(s, s), padding='same', kernel_regularizer=tf.keras.regularizers.l2(0.001))(x)
   print(x)
   # when s = 2 then it is like downsizing the feature map
   x = BatchNormalization()(x)
@@ -99,13 +100,13 @@ def res_conv(x, s, filters):
   #x = Activation('relu')(x)
 
   #third block
-  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x)
+  x = Conv2D(f1, kernel_size=(3,3), strides=(1, 1), padding='same', kernel_regularizer=tf.keras.regularizers.l2(0.001))(x)
   print(x)
   x = BatchNormalization()(x)
   print(x)
 
   # shortcut, Processing Residue with conv(1,1)
-  x_skip = Conv2D(f2, kernel_size=(1, 1), strides=(s, s), kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x_skip)
+  x_skip = Conv2D(f2, kernel_size=(1, 1), strides=(s, s), kernel_regularizer=tf.keras.regularizers.l2(0.001))(x_skip)
   print(x)
   x_skip = BatchNormalization()(x_skip)
   print(x)
@@ -147,9 +148,9 @@ def resnet50(input_im):
   x = res_conv(x, s=2, filters=(256, 1024))
   x = res_identity(x, filters=(256, 1024))
   x = res_identity(x, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
-  x = res_identity(x, filters=(256, 1024))
+  #x = res_identity(x, filters=(256, 1024))
+  #x = res_identity(x, filters=(256, 1024))
+  #x = res_identity(x, filters=(256, 1024))
 
   # 5th stage
 
@@ -169,6 +170,51 @@ def resnet50(input_im):
 
   return model
   
+#implement the Resnet50 architecture
+def resnet50(input_im):
+
+  x = ZeroPadding2D(padding=(3, 3))(input_im)
+
+  # 1st stage
+  # here we perform maxpooling, see the figure above
+
+  x = Conv2D(64, kernel_size=(7, 7), strides=(2, 2))(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = MaxPooling2D((3, 3), strides=(2, 2))(x)
+
+  #2nd stage
+  # frm here on only conv block and identity block, no pooling
+
+  x = res_conv(x, s=2, filters=(64, 256))
+  x = res_identity(x, filters=(64, 256))
+  x = res_identity(x, filters=(64, 256))
+
+  # 3rd stage
+
+  x = res_conv(x, s=2, filters=(128, 512))
+  x = res_identity(x, filters=(128, 512))
+  x = res_identity(x, filters=(128, 512))
+
+  # 4th stage
+
+  x = res_conv(x, s=2, filters=(256, 1024))
+  x = res_identity(x, filters=(256, 1024))
+  x = res_identity(x, filters=(256, 1024))
+
+  # 5th stage
+
+  x = res_conv(x, s=2, filters=(512, 2048))
+  x = res_identity(x, filters=(512, 2048))
+  x = res_identity(x, filters=(512, 2048))
+
+  # ends with average pooling and dense connection
+
+  x = AveragePooling2D((2, 2), padding='same')(x)
+  print("128")
+  x = Flatten()(x)
+
+  return x
 # function optimized to run on gpu
 #@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
@@ -200,10 +246,9 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
 
     ##### RESNET50 IMPLEMENTATION ##########
-    
+    if model_approach == 1:
+        model = resnet50(spec_cnn)
     if model_approach == 2:
-
-        
         # 1st stage
         # here we perform maxpooling, see the figure above
         x = spec_cnn
@@ -236,8 +281,8 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print(spec_cnn)
         spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
         print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-        print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
+        #print(spec_cnn)
 
         #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
         spec_cnn = Dropout(0.2)(spec_cnn)
@@ -251,12 +296,12 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print(spec_cnn)
         spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
         print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-        print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        #print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        #print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+        #print(spec_cnn)
 
         #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
         spec_cnn = Dropout(0.2)(spec_cnn)
@@ -268,34 +313,81 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print(spec_cnn)
         spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
         print(spec_cnn)
-        spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-        print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+        #print(spec_cnn)
+        #spec_cnn = res_identity(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+        #print(spec_cnn)
 
         print(spec_cnn)
-        spec_cnn = Dropout(0.2)(spec_cnn)
-        spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
-        print(spec_cnn)
-        spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
+        #spec_cnn = Dropout(0.2)(spec_cnn)
+        #spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
+        #print(spec_cnn)
+        #spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
 
         #spec_cnn = Conv2D(nb_cnn2d_filt, kernel_size=(3,3), strides=(1, 2), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(spec_cnn)
         print(spec_cnn)
         # ends with average pooling and dense connection
-        #spec_cnn = BatchNormalization()(spec_cnn)
-        #spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
         
         #spec_cnn = AveragePooling2D(pool_size=(2,1), padding='same')(spec_cnn)
         #print(spec_cnn)
 
         #spec_cnn = Dropout(dropout_rate)(spec_cnn)
-        #spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
-        #print(spec_cnn)
-        #spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
-        #print(spec_cnn)
+        spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
+        print(spec_cnn)
+        spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
+        print(spec_cnn)
         print("184")
         print(spec_cnn)
+        #spec_cnn = Flatten()(spec_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
         
+    if model_approach == 3:
+        #print("INITIAL SHAPE ", spec_cnn)
+        ###(10, 300, 64) (CHANNELS, timesteps(sequence length per sample), mel-spectogramms per audio file)
+        ### subsampling (DCASE2021_Zhang_67_t3.pdf)
+        spec_cnn = keras.layers.Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+        #print("(64, 300, 64) ",spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(5,4))(spec_cnn)
+        #print("(64, 60, 16) ", spec_cnn)
+        ###(64, 60, 16)
+        spec_cnn = Conv2D(128, kernel_size=(3, 3), padding='same')(spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(1,4))(spec_cnn)
+        ###(128, 60, 4)
+        spec_cnn = Conv2D(256, kernel_size=(3, 3), padding='same')(spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(1,2))(spec_cnn)
+        ###(256, 60, 2)
+        ### Conformer
+        #print("Before conformer ", spec_cnn)
+        model = Conformer(spec_cnn)
+        print("model printed")
+        ##Zhang and Ko use 2 and 3 conformers respectively
+        #for i in range(depth):
+        spec_cnn = model( spec_cnn, dconv_kernel_size=dconv_kernel_size)
         
+        #spec_cnn = Conformer_fun( spec_cnn, dconv_kernel_size=dconv_kernel_size) #(None, 256, 60, 2)
+        print("Conformer out ", spec_cnn.shape)
+        ###### RESHAPING (60,512) ########
+        permuter=Lambda(lambda x: K.permute_dimensions(x, (0,2,1,3))) #(None, 60, 256, 2)
+        spec_cnn = permuter(spec_cnn)  
+        spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-2]*spec_cnn.shape[-1]))(spec_cnn)#(None, 60, 512)
+        print("Lambda out ", spec_cnn.shape) 
+        ###### DENSE LAYERS #########
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
+        spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
+        #Dense(36, activation = 'tanh')(spec_cnn)
+        #print(spec_cnn)
+
+    if model_approach == 4:
+        import tensorflow as tf
+        tf.test.gpu_device_name()
     """
         #####
         #spec_cnn = ZeroPadding2D(padding=(6, 6))(spec_cnn)
@@ -361,16 +453,15 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     
 ########### END RESNET 50 ######################
     # RNN
-    print(spec_cnn)
+    #print(spec_cnn)
     print("data_out[-2]:")
     print(data_out[-2])
+    
     spec_rnn = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
     for nb_rnn_filt in rnn_size:
-        spec_rnn = Bidirectional(
-            GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
-                return_sequences=True),
-            merge_mode='mul'
-        )(spec_rnn)
+        print("FUEGOOOOOOOOOOOOOOOOO ",nb_rnn_filt)
+        spec_rnn = LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+                return_sequences=True)(spec_rnn)
     print(spec_cnn)
     # FC - DOA
     doa = spec_rnn
@@ -381,7 +472,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     doa = TimeDistributed(Dense(data_out[-1] if is_accdoa else data_out[1][-1]))(doa)
     doa = Activation('tanh', name='doa_out')(doa)
     print(spec_cnn)
-    model = None
+    #model = None
     if is_accdoa:
         model = Model(inputs=spec_start, outputs=doa)
         model.compile(optimizer=Adam(), loss='mse')
@@ -395,11 +486,11 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         sed = Activation('sigmoid', name='sed_out')(sed)
 
         if doa_objective is 'mse':
-            model = Model(inputs=spec_start, outputs=[sed, doa])
+            model = Model(inputs=spec_start, outputs=doa)
             model.compile(optimizer=Adam(), loss=['binary_crossentropy', 'mse'], loss_weights=weights)
         elif doa_objective is 'masked_mse':
             doa_concat = Concatenate(axis=-1, name='doa_concat')([sed, doa])
-            model = Model(inputs=spec_start, outputs=[sed, doa_concat])
+            model = Model(inputs=spec_start, outputs=doa)
             model.compile(optimizer=Adam(), loss=['binary_crossentropy', masked_mse], loss_weights=weights)
         else:
             print('ERROR: Unknown doa_objective: {}'.format(doa_objective))
