@@ -12,12 +12,14 @@ import keras_model
 import parameter
 import time
 import tensorflow as tf
-
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+for device in physical_devices:
+    tf.config.experimental.set_memory_growth(device, True)
+    
 def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred, _doa_pred):
     '''
     Write the filewise results to individual csv files
     '''
-
     # Number of frames for a 60 second audio with 100ms hop length = 600 frames
     max_frames_with_content = _data_gen.get_nb_frames()
 
@@ -125,13 +127,15 @@ def main(argv):
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                      model_approach=params['model_approach'])
+                                      model_approach=params['model_approach'],
+                                      dconv_kernel_size=params['dconv_kernel_size'],
+                                      nb_conf=params['nb_conf'])########## CUSTOM CODE #############
 
         # Dump results in DCASE output format for calculating final scores
         dcase_output_val_folder = os.path.join(params['dcase_output_dir'], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
         cls_feature_class.delete_and_create_folder(dcase_output_val_folder)
         print('Dumping recording-wise val results in: {}'.format(dcase_output_val_folder))
-
+    
         # Initialize evaluation metric class
         score_obj = ComputeSELDResults(params)
 
