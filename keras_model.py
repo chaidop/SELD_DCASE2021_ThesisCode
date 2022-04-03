@@ -427,7 +427,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         #print("INITIAL SHAPE ", spec_cnn)
         ###(10, 300, 64) (CHANNELS, timesteps(sequence length per sample), mel-spectogramms per audio file)
         ### subsampling (DCASE2021_Zhang_67_t3.pdf)
-        spec_cnn = keras.layers.Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+        #tensorflow needs to permute first with last dimensions
+        spec_cnn = tf.transpose(spec_cnn, perm=[0, 2, 3, 1])
+        ##################################################
+        spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
         #print("(64, 300, 64) ",spec_cnn)
         spec_cnn = BatchNormalization()(spec_cnn)
         spec_cnn = Activation('relu')(spec_cnn)
@@ -448,15 +451,15 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         #print("Before conformer ", spec_cnn)
         model = Conformer(spec_cnn)
         print("model printed")
+
         ##Zhang and Ko use 2 and 3 conformers respectively
-        #for i in range(depth):
-        spec_cnn = model( spec_cnn, dconv_kernel_size=dconv_kernel_size)
-        
+        for i in range(nb_conf):
+            spec_cnn = model( spec_cnn, dconv_kernel_size=dconv_kernel_size)
         #spec_cnn = Conformer_fun( spec_cnn, dconv_kernel_size=dconv_kernel_size) #(None, 256, 60, 2)
         print("Conformer out ", spec_cnn.shape)
         ###### RESHAPING (60,512) ########
-        permuter=Lambda(lambda x: K.permute_dimensions(x, (0,2,1,3))) #(None, 60, 256, 2)
-        spec_cnn = permuter(spec_cnn)  
+        #permuter=Lambda(lambda x: K.permute_dimensions(x, (0,2,1,3))) #(None, 60, 256, 2)
+        #spec_cnn = permuter(spec_cnn)  
         spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-2]*spec_cnn.shape[-1]))(spec_cnn)#(None, 60, 512)
         print("Lambda out ", spec_cnn.shape) 
         ###### DENSE LAYERS #########
@@ -469,16 +472,18 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     #print(spec_cnn)
     print("data_out[-2]:")
     print(data_out[-2])
-    spec_rnn = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
-    print(spec_rnn)
+    spec_rnn = spec_cnn#Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
+    print("spec_rnn before gru", spec_rnn)
     for nb_rnn_filt in rnn_size:
         spec_rnn = Bidirectional(
             GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                 return_sequences=True),
-            merge_mode='mul'
-        )(spec_rnn)
-        #LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
-                #return_sequences=True)(spec_rnn)
+                merge_mode='mul')(spec_rnn)
+
+        """
+        LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+            return_sequences=True)(spec_rnn)
+        """
     print(spec_cnn)
     # FC - DOA
     doa = spec_rnn
