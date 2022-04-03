@@ -146,7 +146,7 @@ def MultiHeadAttentionModule_fun(num_heads, dim_head, inputs ):
     num_heads = num_heads
     d_model = dim_head * num_heads
     temp = inputs
-    inputs = LayerNormalization()(inputs)
+    inputs = layer_normalization.LayerNormalization()(inputs)
     print(inputs)
     pos_embedding = positional_encoding(d_model= d_model, position=256)#### position = q.shape[2]
     #pos_embedding (1, seq_posemb, d_model)
@@ -209,7 +209,7 @@ class MultiHeadAttentionModule(keras.layers.Layer):
     print("HEREEE ", q)
 
     temp = inputs
-    inputs =LayerNormalization()(inputs)
+    inputs = layer_normalization.LayerNormalization()(inputs)
     print(inputs)
     pos_embedding = positional_encoding(d_model= self.d_model)#### position = q.shape[2]
     #pos_embedding (1, seq_posemb, d_model)
@@ -342,7 +342,7 @@ class Conformer(Layer):
         #######################
         temp = FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
         spec_cnn = Add()([spec_cnn , temp]) 
-        spec_cnn = LayerNormalization()(spec_cnn)
+        spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
         print(spec_cnn)
         return spec_cnn
 
@@ -368,7 +368,7 @@ def Conformer_fun(spec_cnn, dconv_kernel_size):
     print(spec_cnn)
     #######################
     spec_cnn = spec_cnn + FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
-    spec_cnn = LayerNormalization()(spec_cnn)
+    spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
     print(spec_cnn)
     return spec_cnn
         
@@ -380,7 +380,7 @@ def FeedForward(spec_cnn, encoder_dim: int = 512,
     #K.print_tensor(spec_cnn)
     print("HERE")
     
-    spec_cnn = LayerNormalization()(spec_cnn)
+    spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
     print(spec_cnn)
     spec_cnn = Dense(encoder_dim*expansion_factor, activation = None)(spec_cnn) ## Linear layer
     print(spec_cnn)
@@ -404,14 +404,14 @@ def ConvolutionModule(spec_cnn, nb_cnn2d_filt, dconv_kernel_size: int = 31):
     #pointwise convolution (B, C, T, F)->(B, 2*C, T, F)
     conv = Conv1D(filters=2* nb_cnn2d_filt, kernel_size=1, padding='same')(spec_cnn)
     # GLU Part (https://github.com/IRIS-AUDIO/SELD/blob/669ead73ce1e0db7bafef96d9f4037f9cf2cd0b7/modules.py)
-    conv_1, conv_2 = tf.split(conv, 2, axis=-1)
+    conv_1, conv_2 = tf.split(conv, 2, axis=1)
     conv_2 = tf.keras.activations.sigmoid(conv_2)
     conv = conv_1 * conv_2
     spec_cnn = conv
     #2D depthwise conv
     kernel_size = dconv_kernel_size
     spec_cnn = Conv1D(filters=nb_cnn2d_filt ,kernel_size = kernel_size, padding='same', groups=nb_cnn2d_filt)(spec_cnn)#,groups=nb_cnn2d_filt tensorflow 2.4.0
-    spec_cnn = LayerNormalization()(spec_cnn)
+    spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
     ##swish activation function
     spec_cnn = tf.keras.activations.sigmoid(spec_cnn) * spec_cnn
     #pointwise convolution
