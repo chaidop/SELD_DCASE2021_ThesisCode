@@ -1,8 +1,3 @@
-import os
-import configparser
-from warnings import filters
-from keras import backend as K
-import keras
 from matplotlib.pyplot import axis
 from sklearn.preprocessing import scale
 import tensorflow as tf
@@ -138,7 +133,7 @@ def MultiHeadAttention_fun( q, v, k, pos_embedding, num_heads = 8, dim_head = 64
     #scaled_attention =  K.transpose(scaled_attention, perm=[0, 2, 1, 3])  # (batch_size, seq_len_q, num_heads, depth)
     permuter = Lambda(lambda x: K.permute_dimensions(x, (0,1,3,2,4)))
     scaled_attention = permuter(scaled_attention)
-    concat_attention = Reshape((scaled_attention.shape[1],scaled_attention.shape[-3] , d_model))(scaled_attention )  # (batch_size, seq_len_q, d_model)
+    concat_attention = Reshape((scaled_attention.shape[-4],scaled_attention.shape[-3] , scaled_attention.shape[-2]*scaled_attention.shape[-1]))(scaled_attention )  # (batch_size, seq_len_q, d_model)
     print(concat_attention)
     #scaled_attention = Permute((2,3,1))(scaled_attention)
     print(scaled_attention)
@@ -151,11 +146,11 @@ def MultiHeadAttentionModule_fun(num_heads, dim_head, inputs ):
     num_heads = num_heads
     d_model = dim_head * num_heads
     temp = inputs
-    inputs =layer_normalization.LayerNormalization()(inputs)
+    inputs = LayerNormalization()(inputs)
     print(inputs)
-    pos_embedding = positional_encoding(d_model= d_model)#### position = q.shape[2]
+    pos_embedding = positional_encoding(d_model= d_model, position=256)#### position = q.shape[2]
     #pos_embedding (1, seq_posemb, d_model)
-    output, attention_weights = MultiHeadAttention_fun(q = inputs , v = inputs, k = inputs , pos_embedding=pos_embedding)
+    output, attention_weights = MultiHeadAttention_fun(q = inputs , v = inputs, k = inputs , pos_embedding=pos_embedding, num_heads=num_heads, dim_head=dim_head)
     output = Dropout(0.2)(output)
 
     return output, output
@@ -214,7 +209,7 @@ class MultiHeadAttentionModule(keras.layers.Layer):
     print("HEREEE ", q)
 
     temp = inputs
-    inputs =layer_normalization.LayerNormalization()(inputs)
+    inputs =LayerNormalization()(inputs)
     print(inputs)
     pos_embedding = positional_encoding(d_model= self.d_model)#### position = q.shape[2]
     #pos_embedding (1, seq_posemb, d_model)
@@ -272,6 +267,37 @@ def scaled_dot_product_attention(input_vector, pos_emb):
     Q, K, V = input_vector
     ## Q*K^T
     #K = tf.transpose(K, perm=[0,1,3,2])
+    #K = Reshape((K.shape[1], K.shape[2], K.shape[3]*K.shape[4]))(K)
+    #K = Permute((1,3,2), input_shape=K.shape)(K)
+    #K = Reshape((K.shape[1],  K.shape[-1], Q.shape[4], Q.shape[3]))(K)
+    QK_mult = tf.einsum("...HNO,...HMO->...HNM", Q, K)
+    print(QK_mult) 
+    QK_mult1 = keras.layers.Dot(axes=(4, 3))([QK_mult, QK_mult])
+    dk = tf.cast(K.shape[-1], tf.float32)   #depth
+    print(1/tf.math.sqrt(dk))
+    #postitional_encoding*Q
+    #pos_emb = Reshape((pos_emb.shape[2], pos_emb.shape[3], pos_emb.shape[4]))(pos_emb)
+    #pos_emb = Permute((1,3,2))(pos_emb)
+    #pos_emb = Reshape((1, 1, pos_emb.shape[2], pos_emb.shape[3], pos_emb.shape[4]))(pos_emb)
+    pose = tf.matmul(Q,pos_emb, transpose_b=True)#tf.einsum("...HNO,...HMO->...HNM", Q , pos_emb)    #(...,..., seq_len, seq_len_posemb)
+    #pose = tf.transpose(pose , perm=[0, 1, 3, 2])
+    pose_cut = pose[:,:,:,:,:QK_mult.shape[-1]]
+    product = (QK_mult + pose_cut )/tf.math.sqrt(dk)
+    print(product)
+    ## the scaled self attention equation (page 4, "Attention is all you need")
+    attention_weights = tf.nn.softmax(product, axis=-1)#(...,..., seq_len, seq_len)
+    attention = tf.einsum("...HSZ,...HSD->...HSD", attention_weights, V)#(...,..., seq_len, depth)
+    return attention, attention_weights
+
+    def compute_output_shape(self, input_shape):
+        out_shape = []
+        for i in range(len(input_shape)-1):
+            out_shape += [input_shape[i]]
+    return tuple(out_shape)
+def scaled_dot_product_attentionORIG(input_vector, pos_emb):
+    Q, K, V = input_vector
+    ## Q*K^T
+    #K = tf.transpose(K, perm=[0,1,3,2])
     QK_mult = tf.matmul(Q,K, transpose_b=True) #(...,..., seq_len, seq_len)
     print(QK_mult) 
     dk = tf.cast(K.shape[-1], tf.float32)   #depth
@@ -287,12 +313,6 @@ def scaled_dot_product_attention(input_vector, pos_emb):
     attention = tf.matmul(attention_weights, V)#(...,..., seq_len, depth)
     return attention, attention_weights
 
-    def compute_output_shape(self, input_shape):
-        out_shape = []
-        for i in range(len(input_shape)-1):
-            out_shape += [input_shape[i]]
-    return tuple(out_shape)
-
 class Conformer(Layer):
     def __init__(
             self,
@@ -300,6 +320,8 @@ class Conformer(Layer):
         super(Conformer, self).__init__()
 
     def call(self, spec_cnn, dconv_kernel_size):
+        num_heads=4
+        dim_head=32
         print(spec_cnn)
         res_spec = spec_cnn
         print("FFN")
@@ -310,21 +332,23 @@ class Conformer(Layer):
         print("MHSA MHSA")
         #mhsa1 = MultiHeadAttentionModule(num_heads=8, dim_head=64)#####dim_head was 512
         #output_tensor, weights = mhsa1(spec_cnn, q=spec_cnn, v=spec_cnn, k=spec_cnn, mask= 1)
-        output_tensor, weights = MultiHeadAttentionModule_fun(inputs = spec_cnn, num_heads=8, dim_head=64 )
+        output_tensor, weights = MultiHeadAttentionModule_fun(inputs = spec_cnn, num_heads=num_heads, dim_head=dim_head )
         output_tensor = Dense(spec_cnn.shape[-1])(output_tensor)
         spec_cnn = spec_cnn + output_tensor
         print(spec_cnn)
         #######################
-        spec_cnn = ConvolutionModule(spec_cnn, 512, dconv_kernel_size)
+        spec_cnn = ConvolutionModule(spec_cnn, spec_cnn.shape[-1], dconv_kernel_size)#on the 2nd inpu it was 512(d_model)
         print(spec_cnn)
         #######################
         temp = FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
         spec_cnn = Add()([spec_cnn , temp]) 
-        spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
+        spec_cnn = LayerNormalization()(spec_cnn)
         print(spec_cnn)
         return spec_cnn
 
 def Conformer_fun(spec_cnn, dconv_kernel_size):
+    dim_head = 64
+    num_heads = 8
     print(spec_cnn)
     res_spec = spec_cnn
     print("FFN")
@@ -335,16 +359,16 @@ def Conformer_fun(spec_cnn, dconv_kernel_size):
     print("MHSA MHSA")
     #mhsa1 = MultiHeadAttentionModule(num_heads=8, dim_head=64)#####dim_head was 512
     #output_tensor, weights = mhsa1(spec_cnn, q=spec_cnn, v=spec_cnn, k=spec_cnn, mask= 1)
-    output_tensor, weights = MultiHeadAttentionModule_fun(inputs = spec_cnn, num_heads=8, dim_head=64 )
+    output_tensor, weights = MultiHeadAttentionModule_fun(inputs = spec_cnn, num_heads=num_heads, dim_head=dim_head )
     output_tensor = Dense(spec_cnn.shape[-1])(output_tensor)
     spec_cnn = Add()([spec_cnn , output_tensor])
     print(spec_cnn)
     #######################
-    spec_cnn = ConvolutionModule(spec_cnn, 512, dconv_kernel_size)
+    spec_cnn = ConvolutionModule(spec_cnn, spec_cnn.shape[-1], dconv_kernel_size)#on the 2nd inpu it was 512
     print(spec_cnn)
     #######################
     spec_cnn = spec_cnn + FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
-    spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
+    spec_cnn = LayerNormalization()(spec_cnn)
     print(spec_cnn)
     return spec_cnn
         
@@ -356,14 +380,14 @@ def FeedForward(spec_cnn, encoder_dim: int = 512,
     #K.print_tensor(spec_cnn)
     print("HERE")
     
-    spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
+    spec_cnn = LayerNormalization()(spec_cnn)
     print(spec_cnn)
     spec_cnn = Dense(encoder_dim*expansion_factor, activation = None)(spec_cnn) ## Linear layer
     print(spec_cnn)
     
     print("FFN SHAPE ", temp)
     ##swish activation function
-    spec_cnn = keras.activations.sigmoid(spec_cnn) * spec_cnn
+    spec_cnn = tf.keras.activations.sigmoid(spec_cnn) * spec_cnn
     spec_cnn = Dropout(0.02)(spec_cnn)    
     spec_cnn = Dense(encoder_dim, activation = None)(spec_cnn)
     print("FFN SHAPE ", spec_cnn)
@@ -372,24 +396,33 @@ def FeedForward(spec_cnn, encoder_dim: int = 512,
 
 def ConvolutionModule(spec_cnn, nb_cnn2d_filt, dconv_kernel_size: int = 31):
     temp = spec_cnn
-    #pointwise convolution
-    conv = Conv2D(filters=2* nb_cnn2d_filt, kernel_size=(1,1), padding='same')(spec_cnn)
-    # GLU Part
+    #(None, 256, 60, 2) = (B, C, T, F), B: batch_size, C: channels, T: time length, F: features or frequency length
+    
+    ####### Tensorflow added (None, 60, 2, 256)->(None,60,512)
+    #spec_cnn = Reshape((-1,spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
+    ###
+    #pointwise convolution (B, C, T, F)->(B, 2*C, T, F)
+    conv = Conv1D(filters=2* nb_cnn2d_filt, kernel_size=1, padding='same')(spec_cnn)
+    # GLU Part (https://github.com/IRIS-AUDIO/SELD/blob/669ead73ce1e0db7bafef96d9f4037f9cf2cd0b7/modules.py)
     conv_1, conv_2 = tf.split(conv, 2, axis=-1)
-    conv_2 = keras.activations.sigmoid(conv_2)
+    conv_2 = tf.keras.activations.sigmoid(conv_2)
     conv = conv_1 * conv_2
     spec_cnn = conv
     #2D depthwise conv
     kernel_size = dconv_kernel_size
-    spec_cnn = keras.layers.DepthwiseConv2D(kernel_size = (kernel_size, 1), padding='same')(spec_cnn)#(kernel_size - 1) // 2)(spec_cnn)
-    spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
+    spec_cnn = Conv1D(filters=nb_cnn2d_filt ,kernel_size = kernel_size, padding='same', groups=nb_cnn2d_filt)(spec_cnn)#,groups=nb_cnn2d_filt tensorflow 2.4.0
+    spec_cnn = LayerNormalization()(spec_cnn)
     ##swish activation function
-    spec_cnn = keras.activations.sigmoid(spec_cnn) * spec_cnn
+    spec_cnn = tf.keras.activations.sigmoid(spec_cnn) * spec_cnn
     #pointwise convolution
-    spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(1,1), padding='same')(spec_cnn)
+    spec_cnn = Conv1D(filters=nb_cnn2d_filt, kernel_size=1, padding='same')(spec_cnn)
     spec_cnn = Dropout(0.02)(spec_cnn)
-    spec_cnn = Reshape((temp.shape[-3], spec_cnn.shape[-2],temp.shape[-1]))(spec_cnn)
+    #spec_cnn = Reshape((temp.shape[-3], spec_cnn.shape[-2],temp.shape[-1]))(spec_cnn)
     print(spec_cnn)
+
+    ####### Tensorflow added (None, 60, 2, 256)->(None,60,512)
+    #spec_cnn = Reshape((-1,temp.shape[-2],temp.shape[-1]))(spec_cnn)
+    ###
     add = Add()([temp, spec_cnn])
     return add
 
