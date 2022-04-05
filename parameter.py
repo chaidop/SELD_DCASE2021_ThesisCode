@@ -8,7 +8,18 @@ def get_params(argv='1'):
     print("SET: {}".format(argv))
     # ########### default parameters ##############
     params = dict(
-        model_approach = 3,
+         #####CUSTOM PARAMETERS ##############
+
+        model_approach=3,  #####shows approach to be taken for seld (1 to run baseline)
+        # 0 for baseline
+        # 1 for resnet 18
+        # 2 for resnet 34
+        # 3 for conformer block
+
+        dconv_kernel_size = 31, ## size of depthwise convolution for conformer approach
+        nb_conf = 2,            ## number of conformer layers before SED and DOA separation 
+        #####END CUSTOM PARAMETERS ############
+
         quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
 
         # INPUT PATH
@@ -35,7 +46,7 @@ def get_params(argv='1'):
         doa_objective='mse',        # if is_accdoa=True this is ignored, otherwise it supports: mse, masked_mse. where mse- original seld approach; masked_mse - dcase 2020 approach
 
         label_sequence_length=60,   # Feature sequence length
-        batch_size=256,             # Batch size ###############ORIGINAL 256
+        batch_size=4,             # Batch size ###############ORIGINAL 256
         dropout_rate=0.05,          # Dropout rate, constant for all layers
         nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer#original 64
         f_pool_size=[4, 4, 2],      # CNN frequency pooling, length of list = number of CNN layers, list value = pooling per layer

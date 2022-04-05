@@ -15,13 +15,13 @@ from keras.layers import Activation, BatchNormalization, TimeDistributed, Dropou
 from keras.layers import GRU, Dense, Input, Activation, Conv2D, MaxPooling2D
 from keras.layers import Dot, add, multiply, concatenate, subtract, GlobalMaxPooling1D
 from keras.layers import UpSampling2D, GlobalMaxPooling2D
-import torch.functional as F
-import torch.nn as nn
+#import torch.functional as F
+#import torch.nn as nn
 #from keras_layer_normalization import LayerNormalization
 
 
 import numpy as np
-import layer_normalization
+from . import layer_normalization
 
 ##https://colab.research.google.com/github/tensorflow/text/blob/master/docs/tutorials/transformer.ipynb?hl=ro#scrollTo=ncyS-Ms3i2x_
 
@@ -295,9 +295,8 @@ def scaled_dot_product_attention(input_vector, pos_emb):
 
 class Conformer(Layer):
     def __init__(
-            self,
-            spec_cnn):
-        super(Conformer, self).__init__()
+            self, **kwargs):
+        super(Conformer, self).__init__(**kwargs)
 
     def call(self, spec_cnn, dconv_kernel_size):
         print(spec_cnn)
@@ -398,7 +397,7 @@ def get_angles(pos, i, d_model):
   angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
   return pos * angle_rates
 
-def positional_encoding(d_model, position: int = 10000):
+def positional_encoding(d_model, position: int = 200):
   print("axis ", np.newaxis)
   angle_rads = get_angles(np.arange(position)[:, np.newaxis],
                           np.arange(d_model)[np.newaxis, :],

@@ -125,7 +125,8 @@ def main(argv):
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                      model_approach=params['model_approach'])
+                                      model_approach=params['model_approach'],
+                                      depth = params['nb_conf'])
 
         # Dump results in DCASE output format for calculating final scores
         dcase_output_val_folder = os.path.join(params['dcase_output_dir'], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
@@ -210,7 +211,7 @@ def main(argv):
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
 
-        model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'])
+        model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'], params['model_approach'])
         pred_test = model.predict_generator(
             generator=data_gen_test.generate(),
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),

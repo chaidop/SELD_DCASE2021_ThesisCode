@@ -6,7 +6,7 @@
 #from tensorflow import keras
 
 import tensorflow.keras
-from keras.layers import Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
+from keras.layers import Lambda,Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
 from keras.layers.recurrent import GRU, LSTM
 from keras.layers.normalization import BatchNormalization
@@ -27,9 +27,11 @@ from keras import backend as K
 from numba import jit, cuda
 
 import tensorflow as tf
-#physical_devices = tf.config.experimental.list_physical_devices('GPU')
-#for device in physical_devices:
-#    tf.config.experimental.set_memory_growth(device, True)
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+
+for device in physical_devices:
+    print(device)
+    tf.config.experimental.set_memory_growth(device, True)
 
 sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
 from tensorflow.python.client import device_lib
@@ -219,7 +221,7 @@ def resnet50(input_im):
 #@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
               rnn_size, fnn_size, weights, doa_objective, is_accdoa,
-              model_approach): ####### CUSTOM CODE
+              model_approach, depth): ####### CUSTOM CODE
 
     #tf.config.experimental.list_physical_devices('GPU')
     #tf.debugging.set_log_device_placement(True)
@@ -366,11 +368,11 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         ###(256, 60, 2)
         ### Conformer
         #print("Before conformer ", spec_cnn)
-        model = Conformer(spec_cnn)
+        model = Conformer()
         print("model printed")
         ##Zhang and Ko use 2 and 3 conformers respectively
-        #for i in range(depth):
-        spec_cnn = model( spec_cnn, dconv_kernel_size=dconv_kernel_size)
+        for i in range(depth):
+            spec_cnn = model( spec_cnn, dconv_kernel_size=31)
         
         #spec_cnn = Conformer_fun( spec_cnn, dconv_kernel_size=dconv_kernel_size) #(None, 256, 60, 2)
         print("Conformer out ", spec_cnn.shape)
@@ -510,8 +512,12 @@ def masked_mse(y_gt, model_out):
     return keras.backend.sqrt(keras.backend.sum(keras.backend.square(y_gt[:, :, nb_classes:] - model_out[:, :, nb_classes:]) * sed_out))/keras.backend.sum(sed_out)
 
 
-def load_seld_model(model_file, doa_objective):
+def load_seld_model(model_file, doa_objective, 
+                    model_approach):### CUSTOM
     if doa_objective is 'mse':
+        ##CUSTOM need to check if it is using custom layer conformer, to add parameter
+        if model_approach == 3:
+            return load_model(model_file, custom_objects={'Conformer': Conformer})
         return load_model(model_file)
     elif doa_objective is 'masked_mse':
         return load_model(model_file, custom_objects={'masked_mse': masked_mse})
