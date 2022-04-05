@@ -371,16 +371,14 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         model = Conformer()
         print("model printed")
         ##Zhang and Ko use 2 and 3 conformers respectively
+        
+        print(spec_cnn)
         for i in range(depth):
             spec_cnn = model( spec_cnn, dconv_kernel_size=31)
         
-        #spec_cnn = Conformer_fun( spec_cnn, dconv_kernel_size=dconv_kernel_size) #(None, 256, 60, 2)
         print("Conformer out ", spec_cnn.shape)
-        ###### RESHAPING (60,512) ########
-        permuter=Lambda(lambda x: K.permute_dimensions(x, (0,2,1,3))) #(None, 60, 256, 2)
-        spec_cnn = permuter(spec_cnn)  
-        spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-2]*spec_cnn.shape[-1]))(spec_cnn)#(None, 60, 512)
-        print("Lambda out ", spec_cnn.shape) 
+        #(60,512)
+
         ###### DENSE LAYERS #########
         spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
         spec_cnn = Dense(128, activation = 'relu')(spec_cnn)

@@ -299,6 +299,7 @@ class Conformer(Layer):
         super(Conformer, self).__init__(**kwargs)
 
     def call(self, spec_cnn, dconv_kernel_size):
+        ##### need to reshape to (None, 512, 60 )
         print(spec_cnn)
         res_spec = spec_cnn
         print("FFN")
