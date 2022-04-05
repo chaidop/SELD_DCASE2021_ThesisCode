@@ -9,11 +9,14 @@ from IPython import embed
 from collections import deque
 import random
 
+from data_augmentation import *
+
 
 class DataGenerator(object):
     def __init__(
             self, params, split=1, shuffle=True, per_file=False, is_eval=False
     ):
+        self._data_augm = params['data_augm']
         self._per_file = per_file
         self._is_eval = is_eval
         self._splits = np.array(split)
@@ -160,6 +163,9 @@ class DataGenerator(object):
                     yield feat
 
             else:
+                ##CUSTOM temp list to keep indexes of augmented files
+                augm_indx = []
+                i = 0
                 for i in range(self._nb_total_batches):
 
                     # load feat and label to circular buffer. Always maintain atleast one batch worth feat and label in the
@@ -168,10 +174,26 @@ class DataGenerator(object):
                         temp_feat = np.load(os.path.join(self._feat_dir, self._filenames_list[file_cnt]))
                         temp_label = np.load(os.path.join(self._label_dir, self._filenames_list[file_cnt]))
 
+                       
+
                         for f_row in temp_feat:
                             self._circ_buf_feat.append(f_row)
+                            ###CUSTOM add online data augm code, if data_augm=0 no data augmentation
+                            #if self._data_augm is not 0: 
+                                #f_row_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(f_row)
+                                #if was_augmented:
+                                #    self._circ_buf_feat.append(f_row_augm)
+                                #    augm_indx.append(i)
+                                #    i += 1
+                        #i = j = 0
                         for l_row in temp_label:
                             self._circ_buf_label.append(l_row)
+                            #CUSTOM add twice the label input if augmented data]
+                            #if augm_indx[j] == i: 
+                            #    self._circ_buf_label.append(l_row)
+                            #    j += 1
+                        #i += 1
+                            ######  
 
                         # If self._per_file is True, this returns the sequences belonging to a single audio recording
                         if self._per_file:
@@ -193,8 +215,27 @@ class DataGenerator(object):
                     label = np.zeros((self._label_batch_seq_len, self._label_len))
                     for j in range(self._feature_batch_seq_len):
                         feat[j, :] = self._circ_buf_feat.popleft()
+                        ###CUSTOM add online data augm code, if data_augm=0 no data augmentation
+                        if self._data_augm is 0: 
+                            feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat[j, :])
+                            if was_augmented:
+                                self._feature_batch_seq_len += 1
+                                j += 1
+                                feat[j, :] = feat_augm
+                                augm_indx.append(i)
+                                i += 1
+                        i = k = 0
+                        ##############################
                     for j in range(self._label_batch_seq_len):
                         label[j, :] = self._circ_buf_label.popleft()
+                        #CUSTOM add twice the label input if augmented data]
+                        if self._data_augm is 0:
+                            if augm_indx[k] == i : #this file has been augmented
+                                self._label_batch_seq_len += 1
+                                j += 1
+                                label[j, :] = label[j-1, :]
+                        i += 1
+                        ######  
                     feat = np.reshape(feat, (self._feature_batch_seq_len, self._nb_ch, self._nb_mel_bins)).transpose((0, 2, 1))
 
                     # Split to sequences
@@ -211,6 +252,7 @@ class DataGenerator(object):
                             label[:, :, :self._nb_classes],  # SED labels
                             label[:, :, self._nb_classes:] if self._doa_objective is 'mse' else label # SED + DOA labels
                              ]
+
                     yield feat, label
 
     def _split_in_seqs(self, data, _seq_len):
