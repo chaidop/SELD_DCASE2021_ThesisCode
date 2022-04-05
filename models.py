@@ -1,19 +1,19 @@
 from matplotlib.pyplot import axis
 from sklearn.preprocessing import scale
 import tensorflow as tf
-#import tensorflow.keras
+import keras
 from keras.layers import Layer, Add
 from keras.models import load_model, Model
 from keras.layers import Permute, Reshape, Lambda, Bidirectional, Conv2DTranspose, dot
 from keras.layers import Embedding, GlobalAveragePooling1D, GlobalMaxPooling1D
 from keras.layers import Activation, BatchNormalization, TimeDistributed, Dropout
-from keras.layers import GRU, Dense, Input, Activation, Conv2D, MaxPooling2D
+from keras.layers import GRU, Dense, Input, Activation, Conv2D, MaxPooling2D, Conv1D
 from keras.layers import Dot, add, multiply, concatenate, subtract, GlobalMaxPooling1D
 from keras.layers import UpSampling2D, GlobalMaxPooling2D
 import torch.functional as F
 import torch.nn as nn
 #from keras_layer_normalization import LayerNormalization
-
+from keras import backend as K
 
 import numpy as np
 import layer_normalization
@@ -315,9 +315,8 @@ def scaled_dot_product_attentionORIG(input_vector, pos_emb):
 
 class Conformer(Layer):
     def __init__(
-            self,
-            spec_cnn):
-        super(Conformer, self).__init__()
+            self, **kwargs):
+        super(Conformer, self).__init__(**kwargs)
 
     def call(self, spec_cnn, dconv_kernel_size):
         num_heads=4
@@ -337,7 +336,7 @@ class Conformer(Layer):
         spec_cnn = spec_cnn + output_tensor
         print(spec_cnn)
         #######################
-        spec_cnn = ConvolutionModule(spec_cnn, spec_cnn.shape[-1], dconv_kernel_size)#on the 2nd inpu it was 512(d_model)
+        spec_cnn = ConvolutionModule(spec_cnn, spec_cnn.shape[1], dconv_kernel_size)#on the 2nd inpu it was 512(d_model)
         print(spec_cnn)
         #######################
         temp = FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
@@ -364,7 +363,7 @@ def Conformer_fun(spec_cnn, dconv_kernel_size):
     spec_cnn = Add()([spec_cnn , output_tensor])
     print(spec_cnn)
     #######################
-    spec_cnn = ConvolutionModule(spec_cnn, spec_cnn.shape[-1], dconv_kernel_size)#on the 2nd inpu it was 512
+    spec_cnn = ConvolutionModule(spec_cnn, spec_cnn.shape[1], dconv_kernel_size)#on the 2nd inpu it was 512
     print(spec_cnn)
     #######################
     spec_cnn = spec_cnn + FeedForward(spec_cnn, encoder_dim=spec_cnn.shape[-1])//2
@@ -396,21 +395,23 @@ def FeedForward(spec_cnn, encoder_dim: int = 512,
 
 def ConvolutionModule(spec_cnn, nb_cnn2d_filt, dconv_kernel_size: int = 31):
     temp = spec_cnn
+    nb_cnn2d_filt = 2*nb_cnn2d_filt
     #(None, 256, 60, 2) = (B, C, T, F), B: batch_size, C: channels, T: time length, F: features or frequency length
     
     ####### Tensorflow added (None, 60, 2, 256)->(None,60,512)
-    #spec_cnn = Reshape((-1,spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
+    spec_cnn = Permute((2, 1, 3))(spec_cnn)
+    spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
     ###
     #pointwise convolution (B, C, T, F)->(B, 2*C, T, F)
     conv = Conv1D(filters=2* nb_cnn2d_filt, kernel_size=1, padding='same')(spec_cnn)
     # GLU Part (https://github.com/IRIS-AUDIO/SELD/blob/669ead73ce1e0db7bafef96d9f4037f9cf2cd0b7/modules.py)
-    conv_1, conv_2 = tf.split(conv, 2, axis=1)
+    conv_1, conv_2 = tf.split(conv, 2, axis=-1)
     conv_2 = tf.keras.activations.sigmoid(conv_2)
     conv = conv_1 * conv_2
     spec_cnn = conv
     #2D depthwise conv
     kernel_size = dconv_kernel_size
-    spec_cnn = Conv1D(filters=nb_cnn2d_filt ,kernel_size = kernel_size, padding='same', groups=nb_cnn2d_filt)(spec_cnn)#,groups=nb_cnn2d_filt tensorflow 2.4.0
+    spec_cnn = Conv1D(filters=nb_cnn2d_filt ,kernel_size = kernel_size, padding='same')(spec_cnn)#,groups=nb_cnn2d_filt tensorflow 2.4.0
     spec_cnn = layer_normalization.LayerNormalization()(spec_cnn)
     ##swish activation function
     spec_cnn = tf.keras.activations.sigmoid(spec_cnn) * spec_cnn
@@ -421,7 +422,8 @@ def ConvolutionModule(spec_cnn, nb_cnn2d_filt, dconv_kernel_size: int = 31):
     print(spec_cnn)
 
     ####### Tensorflow added (None, 60, 2, 256)->(None,60,512)
-    #spec_cnn = Reshape((-1,temp.shape[-2],temp.shape[-1]))(spec_cnn)
+    spec_cnn = Reshape((temp.shape[-2],temp.shape[-3],temp.shape[-1]))(spec_cnn)
+    spec_cnn = Permute((2, 1, 3))(spec_cnn)
     ###
     add = Add()([temp, spec_cnn])
     return add
