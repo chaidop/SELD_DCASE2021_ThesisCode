@@ -70,3 +70,24 @@ All you need is attetnion::
 https://www.youtube.com/watch?v=iDulhoQ2pro
 1:10
 encoder turns input to hidden state vector
+
+
+
+5/4/2022
+
+ubuntu version is working (it is an outdated one from 25 march tho)
+but i dont know if computations are done on the correct dimension
+i need all computations to be done on the dimension of size 256 (if input is (None, 256, 60 ,2)), but i think it is happening in dimension of size 2
+
+TODO:::: Look into that, generally even the latest code from windows might be wrong
+i need to do everything on the dimension 256 OR even need to reshape (Nnoe, 256, 60 ,2)->(None, 60, 512)
+->>Also look into making every model approach into a class, like conformer, and put in models.py
+
+but results look promising
+tf 2.2.0
+
+DOING:::
+might run this probably wrong version ( in terms onf working dimensions) on cpu, gpu not working
+
+reshaped to (None,60,512)
+try to debug this version now temp saved in file models_2d.py
