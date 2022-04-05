@@ -126,7 +126,8 @@ def main(argv):
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
                                       model_approach=params['model_approach'],
-                                      depth = params['nb_conf'])
+                                      depth = params['nb_conf'],
+                                      decoder = params['decoder'])
 
         # Dump results in DCASE output format for calculating final scores
         dcase_output_val_folder = os.path.join(params['dcase_output_dir'], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))

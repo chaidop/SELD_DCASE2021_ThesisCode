@@ -10,7 +10,7 @@ def get_params(argv='1'):
     params = dict(
          #####CUSTOM PARAMETERS ##############
 
-        model_approach=3,  #####shows approach to be taken for seld (1 to run baseline)
+        model_approach=2,  #####shows approach to be taken for seld (1 to run baseline)
         # 0 for baseline
         # 1 for resnet 18
         # 2 for resnet 34
@@ -18,6 +18,10 @@ def get_params(argv='1'):
 
         dconv_kernel_size = 31, ## size of depthwise convolution for conformer approach
         nb_conf = 2,            ## number of conformer layers before SED and DOA separation 
+
+        decoder = 0,
+        # 0 for bi-gru
+        # 1 for lstm
         #####END CUSTOM PARAMETERS ############
 
         quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
@@ -54,7 +58,7 @@ def get_params(argv='1'):
         rnn_size=[128, 128],        # RNN contents, length of list = number of layers, list value = number of nodes
         fnn_size=[128],             # FNN contents, length of list = number of layers, list value = number of nodes
         loss_weights=[1., 1000.],   # [sed, doa] weight for scaling the DNN outputs
-        nb_epochs=40,               # Train for maximum epochs #### originally 50
+        nb_epochs=10,               # Train for maximum epochs #### originally 50
         epochs_per_fit=5,           # Number of epochs per fit
 
         # METRIC PARAMETERS
