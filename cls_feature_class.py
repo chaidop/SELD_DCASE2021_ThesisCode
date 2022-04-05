@@ -13,6 +13,7 @@ import librosa
 plot.switch_backend('agg')
 import shutil
 import math
+from data_augmentation import *
 
 
 def nCr(n, r):
@@ -60,6 +61,10 @@ class FeatureClass:
         self._dataset = params['dataset']
         self._eps = 1e-8
         self._nb_channels = 4
+
+        #### CUSTOM array of indexes of augmented files
+        self.augm_indx = []
+        self._data_augm = params['data_augm']
 
         # Sound event classes dictionary
         self._unique_classes = params['unique_classes']
@@ -188,7 +193,6 @@ class FeatureClass:
 
                 #extract mel
                 mel_spect = self._get_mel_spectrogram(spect)
-
                 feat = None
                 if self._dataset == 'foa':
                     # extract intensity vectors
@@ -204,7 +208,18 @@ class FeatureClass:
 
                 if feat is not None:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                    ##### CUSTOM data augmentation that does not change label, only in train dataset
+                    if not self._is_eval and self._data_augm is not 0:
+                        feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                        if was_augmented:
+                            #have a list of the names of files that were augmented, to copy the labels on that index
+                            self.augm_indx = np.append(self.augm_indx, file_name)
+                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat_augm)
+                            print('\t{}: {}_augm, {}'.format(file_cnt, file_name, feat.shape ))
+                    #######
                     np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
+
+                    
 
     def preprocess_features(self):
         # Setting up folders and filenames
@@ -251,6 +266,8 @@ class FeatureClass:
 
     # ------------------------------- EXTRACT LABELS AND PREPROCESS IT -------------------------------
     def extract_all_labels(self):
+        i = 0
+
         self._label_dir = self.get_label_dir()
 
         print('Extracting labels:')
@@ -259,13 +276,19 @@ class FeatureClass:
         create_folder(self._label_dir)
         for split in os.listdir(self._desc_dir):
             print('Split: {}'.format(split))
-            for file_cnt, file_name in enumerate(os.listdir(os.path.join(self._desc_dir, split))):
-                wav_filename = '{}.wav'.format(file_name.split('.')[0])
-                desc_file_polar = self.load_output_format_file(os.path.join(self._desc_dir, split, file_name))
-                desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
-                label_mat = self.get_labels_for_file(desc_file)
-                print('\t{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
-                np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
+            if split != 'desktop.ini':
+                for file_cnt, file_name in enumerate(os.listdir(os.path.join(self._desc_dir, split))):
+                    wav_filename = '{}.wav'.format(file_name.split('.')[0])
+                    desc_file_polar = self.load_output_format_file(os.path.join(self._desc_dir, split, file_name))
+                    desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
+                    label_mat = self.get_labels_for_file(desc_file)
+                    print('\t{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
+                    np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
+                    #CUSTOM save twice if the file is augmented
+                    print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
+                    if self.augm_indx[i] == wav_filename :
+                        np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
+                        i +=1
 
     # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
     def load_output_format_file(self, _output_format_file):
