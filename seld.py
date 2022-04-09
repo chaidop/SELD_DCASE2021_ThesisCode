@@ -12,7 +12,9 @@ import keras_model
 import parameter
 import time
 import tensorflow as tf
+
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
+#print(physical_devices[0])
 for device in physical_devices:
     tf.config.experimental.set_memory_growth(device, True)
     
@@ -182,6 +184,7 @@ def main(argv):
             if seld_metric[epoch_cnt, -1] < best_seld_metric:
                 best_seld_metric = seld_metric[epoch_cnt, -1]
                 best_epoch = epoch_cnt
+                print("Saving model ", model_name)
                 model.save(model_name)
                 patience_cnt = 0
 
