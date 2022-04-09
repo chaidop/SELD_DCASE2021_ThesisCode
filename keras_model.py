@@ -1,11 +1,11 @@
 #
 # The SELDnet architecture
-#
+#f
 ########## CHANGED import keras. ... to import tensorflow.keras....
 #import tensorflow
 #from tensorflow import keras
 
-import tensorflow.keras
+#import tensorflow.keras
 from keras.layers import Lambda,Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
 from keras.layers.recurrent import GRU, LSTM
@@ -19,12 +19,13 @@ keras.backend.set_image_data_format('channels_first')
 from IPython import embed
 import numpy as np
 from neural_models.models import Conformer, Conformer_fun
-
+import os
 
 from keras import backend as K
 #K.tensorflow_backend._get_available_gpus()
 
 from numba import jit, cuda
+
 
 import tensorflow as tf
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -33,9 +34,16 @@ for device in physical_devices:
     print(device)
     tf.config.experimental.set_memory_growth(device, True)
 
-sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+
+config = tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True))
+sess = tf.compat.v1.Session(config=config)
+
+#sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 ''' 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -168,68 +176,68 @@ def resnet34(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
     # 1st stage
     # here we perform maxpooling, see the figure above
     print("hello\n")
-    print(spec_cnn)
+    #print(spec_c_cnn)
     # frm here on only conv block and identity block, no pooling
     print("\n############ STAGE 1 ##############\n")
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     # 3rd stage
     print("\n############ STAGE 2 ##############\n")
     spec_cnn = res_conv18(spec_cnn, s=1, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2,nb_cnn2d_filt*2))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
-    print(spec_cnn)
+    #print(spec_c_cnn)
 
     #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
     spec_cnn = Dropout(0.2)(spec_cnn)
     # 4th stage
     print("\n############ STAGE 3 ##############\n")
     spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
-    print(spec_cnn)
+    #print(spec_c_cnn)
 
     #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
     spec_cnn = Dropout(0.2)(spec_cnn)
     # 5th stage
     print("\n############ STAGE 4 ##############\n")
     spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
-    print(spec_cnn)
+    #print(spec_c_cnn)
 
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = Dropout(0.2)(spec_cnn)
     spec_cnn = Dense(512, activation = 'relu')(spec_cnn)
-    print(spec_cnn)
+    #print(spec_c_cnn)
     spec_cnn = Dense(12, activation = 'softmax')(spec_cnn) ## 12 = nb_classes(the total number of sound events)
 
     #spec_cnn = Conv2D(nb_cnn2d_filt, kernel_size=(3,3), strides=(1, 2), padding='same', kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(spec_cnn)
-    print(spec_cnn)
+    #print(spec_c_cnn)
 
     return spec_cnn
 
@@ -328,7 +336,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
 
     # CNN
     spec_cnn = spec_start
-    print(spec_cnn)
+    #print(spec_c_cnn)
     ###### end #####
     #spec_cnn = ZeroPadding2D(padding=(2, 2))(spec_cnn)
     if model_approach == 0:
@@ -362,9 +370,9 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
             spec_cnn = resnet34(t_pool_size,f_pool_size,spec_cnn, nb_cnn2d_filt)
         #added maxpool for reshaping output
         #spec_cnn = Permute((2, 1, 3))(spec_cnn)
-        print(spec_cnn)
+        #print(spec_c_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
-        print(spec_cnn)
+        #print(spec_c_cnn)
         ##need to pool to bring sequence to (60,64,2) dimension(seq-len, mel-bands, idk(??))
         spec_cnn = AveragePooling2D(pool_size=(4,6), padding='same')(spec_cnn)
         print("pool ",spec_cnn)
@@ -396,13 +404,16 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         print("model printed")
         ##Zhang and Ko use 2 and 3 conformers respectively
         
-        print(spec_cnn)
+        #print(spec_c_cnn)
         for i in range(depth):
             spec_cnn = model( spec_cnn, dconv_kernel_size=31)
         
         print("Conformer out ", spec_cnn.shape)
-        #(60,512)
-
+        #(60,512) with models_2d.py
+        #(256, 60, 2) with models.py
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
+        #(60, 512)
         ###### DENSE LAYERS #########
         spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
         spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
@@ -480,20 +491,25 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     #print(spec_cnn)
     print("data_out[-2]:")
     print(data_out[-2])
-    
+    print(spec_cnn.shape)
+
     spec_rnn = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
     for nb_rnn_filt in rnn_size:
         print("FUEGOOOOOOOOOOOOOOOOO ",nb_rnn_filt)
         if decoder == 0:
-            spec_rnn = Bidirectional(
-            GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
-                return_sequences=True),
-                merge_mode='mul')(spec_rnn)
+            spec_gru = GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+                return_sequences=True)(spec_rnn)
+            spec_rnn = Reshape((spec_rnn.shape[-2], spec_rnn.shape[-1]))(spec_rnn)
+            print(spec_rnn.shape)
+            spec_rnn = Bidirectional(spec_gru, merge_mode='mul')(spec_rnn)
+            
         elif decoder == 1:
+            keras.backend.set_image_data_format('channels_last')
             spec_rnn = LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                 return_sequences=True)(spec_rnn)
     print(spec_cnn)
     # FC - DOA
+    #keras.backend.set_image_data_format('channels_first')
     doa = spec_rnn
     for nb_fnn_filt in fnn_size:
         doa = TimeDistributed(Dense(nb_fnn_filt))(doa)
