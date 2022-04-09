@@ -52,12 +52,12 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 '''
-
 """
 configuration = tf.compat.v1.ConfigProto()
 configuration.gpu_options.allow_growth = True
-session = tf.compat.v1.Session(config=configuration)
-"""
+ session = tf.compat.v1.Session(config=configuration)
+ """
+
 def res_identity(x, filters):
     #renet block where dimension doesnot change.
     #The skip connection is just simple identity conncection
