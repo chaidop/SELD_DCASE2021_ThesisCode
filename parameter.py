@@ -18,6 +18,10 @@ def get_params(argv='1'):
 
         dconv_kernel_size = 31, ## size of depthwise convolution for conformer approach
         nb_conf = 2,            ## number of conformer layers before SED and DOA separation 
+        data_augm=0,  #####shows approach to be taken for seld (1 to run baseline)
+        # 0 no method
+        # 1 pitch shift
+        # 2 frequency mask
         #####END CUSTOM PARAMETERS ############
 
         quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
