@@ -10,7 +10,7 @@ def get_params(argv='1'):
     params = dict(
         #####CUSTOM PARAMETERS ##############
 
-        model_approach=3,  #####shows approach to be taken for seld (1 to run baseline)
+        model_approach=0,  #####shows approach to be taken for seld (1 to run baseline)
         # 0 for baseline
         # 1 for resnet 18
         # 2 for resnet 34
@@ -18,14 +18,13 @@ def get_params(argv='1'):
 
         dconv_kernel_size = 31, ## size of depthwise convolution for conformer approach
         nb_conf = 2,            ## number of conformer layers before SED and DOA separation 
-        data_augm=0,  #####shows approach to be taken for seld (1 to run baseline)
-        # 0 no method
-        # 1 pitch shift
-        # 2 frequency mask
+        data_augm = 2,
+        # 0: None
+        # 1: masking
+        # 2: random shift up/down
+        
         #####END CUSTOM PARAMETERS ############
-
-        quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
-
+        quick_test=False,           # If True: Trains/test on small subset of dataset, and # of epochs
         # INPUT PATH
         dataset_dir='C:\\Users\\pouli\\Documents\\Mathimata\\Eidiko_Thema\\SELD_DCASE2021_UnderConstruction\\input_data\\',  # Base folder containing the foa_dev/mic_dev and metadata folders
 
@@ -50,7 +49,7 @@ def get_params(argv='1'):
         doa_objective='mse',        # if is_accdoa=True this is ignored, otherwise it supports: mse, masked_mse. where mse- original seld approach; masked_mse - dcase 2020 approach
 
         label_sequence_length=60,   # Feature sequence length
-        batch_size=64,             # Batch size ###############ORIGINAL 256
+        batch_size=2,              # Batch size ###############ORIGINAL 256
         dropout_rate=0.05,          # Dropout rate, constant for all layers
         nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer
         f_pool_size=[4, 4, 2],      # CNN frequency pooling, length of list = number of CNN layers, list value = pooling per layer
