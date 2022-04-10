@@ -130,7 +130,8 @@ def main(argv):
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
                                       model_approach=params['model_approach'],
-                                      depth = 2
+                                      depth = 2,
+                                      decoder=params['decoder']
                                       )########## CUSTOM CODE #############
 
         # Dump results in DCASE output format for calculating final scores

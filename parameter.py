@@ -23,8 +23,9 @@ def get_params(argv='1'):
         # 1: masking
         # 2: random shift up/down
         
+        decoder = 0,
         #####END CUSTOM PARAMETERS ############
-        quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
+        quick_test=False,           # If True: Trains/test on small subset of dataset, and # of epochs
         # INPUT PATH
         dataset_dir='./input_data',  # Base folder containing the foa_dev/mic_dev and metadata folders
 

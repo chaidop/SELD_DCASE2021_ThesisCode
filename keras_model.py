@@ -2,26 +2,27 @@
 # The SELDnet architecture
 #
 ########## CHANGED import keras. ... to import tensorflow.keras....
-import tensorflow
+#import tensorflow
 #from tensorflow import keras
 
 import tensorflow.keras
-from tensorflow.keras.layers import Lambda,Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
-from tensorflow.keras.layers import Dense, Activation, Dropout, Reshape, Permute
-from tensorflow.keras.layers import GRU, LSTM
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import TimeDistributed
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import load_model
-#import keras
-tensorflow.keras.backend.set_image_data_format('channels_first')
+from keras.layers import Lambda,Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
+from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
+from keras.layers.recurrent import GRU, LSTM
+from keras.layers.normalization import BatchNormalization
+from keras.models import Model
+from keras.layers.wrappers import TimeDistributed
+from keras.optimizers import Adam
+from keras.models import load_model
+import keras
+keras.backend.set_image_data_format('channels_first')
 from IPython import embed
 import numpy as np
+import os
 from neural_models.models import Conformer, Conformer_fun
 
 
-#from keras import backend as K
+from keras import backend as K
 #K.tensorflow_backend._get_available_gpus()
 
 from numba import jit, cuda
@@ -36,17 +37,19 @@ for device in physical_devices:
 sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
+
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"  
+
 ''' 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 '''
-#TF 2.X
-"""
+'''
 configuration = tf.compat.v1.ConfigProto()
 configuration.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=configuration)
-"""
+'''
 def res_identity(x, filters):
     #renet block where dimension doesnot change.
     #The skip connection is just simple identity conncection
@@ -315,7 +318,7 @@ def resnet50(input_im):
 #@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
               rnn_size, fnn_size, weights, doa_objective, is_accdoa,
-              model_approach, depth): ####### CUSTOM CODE
+              model_approach, depth, decoder): ####### CUSTOM CODE
 
     #tf.config.experimental.list_physical_devices('GPU')
     #tf.debugging.set_log_device_placement(True)
@@ -329,11 +332,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
 
     # CNN
     spec_cnn = spec_start
-    #print(spec_cnn)
+
     ###### end #####
     #spec_cnn = ZeroPadding2D(padding=(2, 2))(spec_cnn)
     if model_approach == 0:
-        tensorflow.keras.backend.set_image_data_format('channels_first')
         for i, convCnt in enumerate(f_pool_size):
             spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
             spec_cnn = BatchNormalization()(spec_cnn)
@@ -342,7 +344,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
             spec_cnn = Dropout(dropout_rate)(spec_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
 
-    ##### RESNET IMPLEMENTATION ##########
+    ##### RESNET50 IMPLEMENTATION ##########
     if model_approach == 1 or model_approach == 2:
         # 1st stage
         # here we perform maxpooling, see the figure above
@@ -375,7 +377,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         #print("INITIAL SHAPE ", spec_cnn)
         ###(10, 300, 64) (CHANNELS, timesteps(sequence length per sample), mel-spectogramms per audio file)
         ### subsampling (DCASE2021_Zhang_67_t3.pdf)
-        spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+        spec_cnn = keras.layers.Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
         #print("(64, 300, 64) ",spec_cnn)
         spec_cnn = BatchNormalization()(spec_cnn)
         spec_cnn = Activation('relu')(spec_cnn)
@@ -473,10 +475,16 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     print(data_out[-2])
     
     spec_rnn = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
-    tensorflow.keras.backend.set_image_data_format('channels_last')
     for nb_rnn_filt in rnn_size:
         print("FUEGOOOOOOOOOOOOOOOOO ",nb_rnn_filt)
-        spec_rnn = LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+        if decoder == 0:
+            keras.backend.set_image_data_format('channels_last')
+            spec_rnn = Bidirectional(
+            GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+                return_sequences=True),
+                merge_mode='mul')(spec_rnn)
+        elif decoder == 1:
+            spec_rnn = LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                 return_sequences=True)(spec_rnn)
     print(spec_cnn)
     # FC - DOA
@@ -519,11 +527,11 @@ def masked_mse(y_gt, model_out):
     nb_classes = 12 #TODO fix this hardcoded value of number of classes
     # SED mask: Use only the predicted DOAs when gt SED > 0.5
     sed_out = y_gt[:, :, :nb_classes] >= 0.5
-    sed_out = tensorflow.keras.backend.repeat_elements(sed_out, 3, -1)
-    sed_out = tensorflow.keras.backend.cast(sed_out, 'float32')
+    sed_out = keras.backend.repeat_elements(sed_out, 3, -1)
+    sed_out = keras.backend.cast(sed_out, 'float32')
 
     # Use the mask to computed mse now. Normalize with the mask weights
-    return tensorflow.keras.backend.sqrt(tensorflow.keras.backend.sum(tensorflow.keras.backend.square(y_gt[:, :, nb_classes:] - model_out[:, :, nb_classes:]) * sed_out))/tensorflow.keras.backend.sum(sed_out)
+    return keras.backend.sqrt(keras.backend.sum(keras.backend.square(y_gt[:, :, nb_classes:] - model_out[:, :, nb_classes:]) * sed_out))/keras.backend.sum(sed_out)
 
 
 def load_seld_model(model_file, doa_objective, 
