@@ -8,9 +8,9 @@ def get_params(argv='1'):
     print("SET: {}".format(argv))
     # ########### default parameters ##############
     params = dict(
-         #####CUSTOM PARAMETERS ##############
+        #####CUSTOM PARAMETERS ##############
 
-        model_approach=3,  #####shows approach to be taken for seld (1 to run baseline)
+        model_approach=0,  #####shows approach to be taken for seld (1 to run baseline)
         # 0 for baseline
         # 1 for resnet 18
         # 2 for resnet 34
@@ -18,47 +18,46 @@ def get_params(argv='1'):
 
         dconv_kernel_size = 31, ## size of depthwise convolution for conformer approach
         nb_conf = 2,            ## number of conformer layers before SED and DOA separation 
-
-        decoder = 1,
-        # 0 for bi-gru
-        # 1 for lstm
+        data_augm = 2,
+        # 0: None
+        # 1: masking
+        # 2: random shift up/down
+        
         #####END CUSTOM PARAMETERS ############
-
         quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
-
         # INPUT PATH
         dataset_dir='./input_data',  # Base folder containing the foa_dev/mic_dev and metadata folders
 
         # OUTPUT PATH
-        feat_label_dir='./seld_feat_label/',  # Directory to dump extracted features and labels
-        model_dir='./models/',            # Dumps the trained models and training curves in this folder
-        dcase_output_dir='./results/',    # recording-wise results are dumped in this path.
+        feat_label_dir="./seld_feat_label",  # Directory to dump extracted features and labels
+        model_dir="./models",            # Dumps the trained models and training curves in this folder
+        dcase_output_dir="./results",    # recording-wise results are dumped in this path.
 
         # DATASET LOADING PARAMETERS
-        mode='eval',          # 'dev' - development or 'eval' - evaluation dataset
+        mode='dev',          # 'dev' - development or 'eval' - evaluation dataset
         dataset='mic',       # 'foa' - ambisonic or 'mic' - microphone signals
 
         #FEATURE PARAMS
-        fs=24000,
+        fs=24000,## 24kHz frequency
         hop_len_s=0.02,
-        label_hop_len_s=0.1,
+        label_hop_len_s=0.1,# 100 ms
         max_audio_len_s=60,
-        nb_mel_bins=64,#original 64
+        nb_mel_bins=64,
 
         # DNN MODEL PARAMETERS
         is_accdoa=True,             # True: Use ACCDOA output format
         doa_objective='mse',        # if is_accdoa=True this is ignored, otherwise it supports: mse, masked_mse. where mse- original seld approach; masked_mse - dcase 2020 approach
 
         label_sequence_length=60,   # Feature sequence length
-        batch_size=4,             # Batch size ###############ORIGINAL 256
+        batch_size=2,              # Batch size ###############ORIGINAL 256
         dropout_rate=0.05,          # Dropout rate, constant for all layers
-        nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer#original 64
+        nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer
         f_pool_size=[4, 4, 2],      # CNN frequency pooling, length of list = number of CNN layers, list value = pooling per layer
 
         rnn_size=[128, 128],        # RNN contents, length of list = number of layers, list value = number of nodes
         fnn_size=[128],             # FNN contents, length of list = number of layers, list value = number of nodes
         loss_weights=[1., 1000.],   # [sed, doa] weight for scaling the DNN outputs
-        nb_epochs=10,               # Train for maximum epochs #### originally 50
+        nb_epochs=40,               # Train for maximum epochs ############### originally 50
         epochs_per_fit=5,           # Number of epochs per fit
 
         # METRIC PARAMETERS

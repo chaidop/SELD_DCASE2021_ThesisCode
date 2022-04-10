@@ -1,0 +1,239 @@
+[name: "/device:CPU:0"
+device_type: "CPU"
+memory_limit: 268435456
+locality {
+}
+incarnation: 3251184072165025834
+, name: "/device:XLA_CPU:0"
+device_type: "XLA_CPU"
+memory_limit: 17179869184
+locality {
+}
+incarnation: 12797194635780977459
+physical_device_desc: "device: XLA_CPU device"
+, name: "/device:XLA_GPU:0"
+device_type: "XLA_GPU"
+memory_limit: 17179869184
+locality {
+}
+incarnation: 8370061063850394781
+physical_device_desc: "device: XLA_GPU device"
+]
+True
+['seld.py', '2', 'conformer']
+SET: 2
+	model_approach: 3
+	dconv_kernel_size: 31
+	nb_conf: 2
+	decoder: 0
+	quick_test: False
+	dataset_dir: ./input_data
+	feat_label_dir: ./seld_feat_label/
+	model_dir: ./models/
+	dcase_output_dir: ./results/
+	mode: dev
+	dataset: mic
+	fs: 24000
+	hop_len_s: 0.02
+	label_hop_len_s: 0.1
+	max_audio_len_s: 60
+	nb_mel_bins: 64
+	is_accdoa: True
+	doa_objective: mse
+	label_sequence_length: 60
+	batch_size: 4
+	dropout_rate: 0.05
+	nb_cnn2d_filt: 64
+	f_pool_size: [4, 4, 2]
+	rnn_size: [128, 128]
+	fnn_size: [128]
+	loss_weights: [1.0, 1000.0]
+	nb_epochs: 10
+	epochs_per_fit: 5
+	lad_doa_thresh: 20
+	feature_sequence_length: 300
+	t_pool_size: [5, 1, 1]
+	patience: 10
+	unique_classes: {'alarm': 0, 'baby': 1, 'crash': 2, 'dog': 3, 'female_scream': 4, 'female_speech': 5, 'footsteps': 6, 'knock': 7, 'male_scream': 8, 'male_speech': 9, 'phone': 10, 'piano': 11}
+
+
+---------------------------------------------------------------------------------------------------
+------------------------------------      SPLIT 6   -----------------------------------------------
+---------------------------------------------------------------------------------------------------
+unique_name: ./models/2_conformer_mic_dev_split6
+
+Loading training dataset:
+	Datagen_mode: dev, nb_files: 400, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 5, label_len:48
+
+	Dataset: mic, split: [1, 2, 3, 4]
+	batch_size: 4, feat_seq_len: 300, label_seq_len: 60, shuffle: True
+	Total batches in dataset: 1000
+	label_dir: ./seld_feat_label/mic_dev_label
+ 	feat_dir: ./seld_feat_label/mic_dev_norm
+
+Loading validation dataset:
+	Datagen_mode: dev, nb_files: 100, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 5, label_len:48
+
+	Dataset: mic, split: 5
+	batch_size: 10, feat_seq_len: 300, label_seq_len: 60, shuffle: False
+	Total batches in dataset: 100
+	label_dir: ./seld_feat_label/mic_dev_label
+ 	feat_dir: ./seld_feat_label/mic_dev_norm
+
+FEATURES:
+	data_in: (4, 5, 300, 64)
+	data_out: (4, 60, 36)
+
+MODEL:
+	dropout_rate: 0.05
+	CNN: nb_cnn_filt: 64, f_pool_size[4, 4, 2], t_pool_size[5, 1, 1]
+	rnn_size: [128, 128], fnn_size: [128]
+	doa_objective: mse
+
+Using loss weights : [1.0, 1000.0]
+Tensor("input_1:0", shape=(None, 5, 300, 64), dtype=float32)
+model printed
+Tensor("max_pooling2d_3/transpose_1:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("max_pooling2d_3/transpose_1:0", shape=(None, 256, 60, 2), dtype=float32)
+FFN
+HERE
+ll
+Tensor("conformer_1/layer_normalization_1/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1/dense_1/BiasAdd:0", shape=(None, 256, 60, 8), dtype=float32)
+FFN SHAPE  Tensor("max_pooling2d_3/transpose_1:0", shape=(None, 256, 60, 2), dtype=float32)
+FFN SHAPE  Tensor("conformer_1/dense_2/BiasAdd:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1/add:0", shape=(None, 256, 60, 2), dtype=float32)
+MHSA MHSA
+ll
+Tensor("conformer_1/layer_normalization_2/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+axis  None
+Tensor("conformer_1/reshape_1/Reshape:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+Tensor("conformer_1/reshape_2/Reshape:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+Tensor("conformer_1/reshape_3/Reshape:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+POS EMB SHAPE  (1, 200, 512)
+Tensor("conformer_1/reshape_4/Reshape:0", shape=(1, 1, 200, 8, 64), dtype=float32)
+POS SPLIT EMB SHAPE  (1, 1, 8, 200, 64)
+Tensor("conformer_1/MatMul:0", shape=(None, 256, 8, 60, 60), dtype=float32)
+Tensor("conformer_1/truediv:0", shape=(), dtype=float32)
+Tensor("conformer_1/truediv_1:0", shape=(None, 256, 8, 60, 60), dtype=float32)
+Tensor("conformer_1/reshape_5/Reshape:0", shape=(None, 256, 60, 512), dtype=float32)
+Tensor("conformer_1/lambda_5/transpose:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+Tensor("conformer_1/add_3:0", shape=(None, 256, 60, 2), dtype=float32)
+ll
+Tensor("conformer_1/reshape_6/Reshape:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1/add_2_1/add:0", shape=(None, 256, 60, 2), dtype=float32)
+HERE
+ll
+Tensor("conformer_1/layer_normalization_4/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1/dense_8/BiasAdd:0", shape=(None, 256, 60, 8), dtype=float32)
+FFN SHAPE  Tensor("conformer_1/add_2_1/add:0", shape=(None, 256, 60, 2), dtype=float32)
+FFN SHAPE  Tensor("conformer_1/dense_9/BiasAdd:0", shape=(None, 256, 60, 2), dtype=float32)
+ll
+Tensor("conformer_1/layer_normalization_5/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1/layer_normalization_5/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+FFN
+HERE
+ll
+Tensor("conformer_1_1/layer_normalization_6/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1_1/dense_10/BiasAdd:0", shape=(None, 256, 60, 8), dtype=float32)
+FFN SHAPE  Tensor("conformer_1/layer_normalization_5/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+FFN SHAPE  Tensor("conformer_1_1/dense_11/BiasAdd:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1_1/add:0", shape=(None, 256, 60, 2), dtype=float32)
+MHSA MHSA
+ll
+Tensor("conformer_1_1/layer_normalization_7/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+axis  None
+Tensor("conformer_1_1/reshape_7/Reshape:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+Tensor("conformer_1_1/reshape_8/Reshape:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+Tensor("conformer_1_1/reshape_9/Reshape:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+POS EMB SHAPE  (1, 200, 512)
+Tensor("conformer_1_1/reshape_10/Reshape:0", shape=(1, 1, 200, 8, 64), dtype=float32)
+POS SPLIT EMB SHAPE  (1, 1, 8, 200, 64)
+Tensor("conformer_1_1/MatMul:0", shape=(None, 256, 8, 60, 60), dtype=float32)
+Tensor("conformer_1_1/truediv:0", shape=(), dtype=float32)
+Tensor("conformer_1_1/truediv_1:0", shape=(None, 256, 8, 60, 60), dtype=float32)
+Tensor("conformer_1_1/reshape_11/Reshape:0", shape=(None, 256, 60, 512), dtype=float32)
+Tensor("conformer_1_1/lambda_10/transpose:0", shape=(None, 256, 60, 8, 64), dtype=float32)
+Tensor("conformer_1_1/add_2:0", shape=(None, 256, 60, 2), dtype=float32)
+ll
+Tensor("conformer_1_1/reshape_12/Reshape:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1_1/add_6/add:0", shape=(None, 256, 60, 2), dtype=float32)
+HERE
+ll
+Tensor("conformer_1_1/layer_normalization_9/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+Tensor("conformer_1_1/dense_17/BiasAdd:0", shape=(None, 256, 60, 8), dtype=float32)
+FFN SHAPE  Tensor("conformer_1_1/add_6/add:0", shape=(None, 256, 60, 2), dtype=float32)
+FFN SHAPE  Tensor("conformer_1_1/dense_18/BiasAdd:0", shape=(None, 256, 60, 2), dtype=float32)
+ll
+Tensor("conformer_1_1/layer_normalization_10/add_1:0", shape=(None, 256, 60, 2), dtype=float32)
+Conformer out  (None, 256, 60, 2)
+data_out[-2]:
+60
+FUEGOOOOOOOOOOOOOOOOO  128
+FUEGOOOOOOOOOOOOOOOOO  128
+Tensor("dense_20/Relu:0", shape=(None, 256, 60, 128), dtype=float32)
+Tensor("dense_20/Relu:0", shape=(None, 256, 60, 128), dtype=float32)
+Tensor("dense_20/Relu:0", shape=(None, 256, 60, 128), dtype=float32)
+Model: "model_1"
+__________________________________________________________________________________________________
+Layer (type)                    Output Shape         Param #     Connected to                     
+==================================================================================================
+input_1 (InputLayer)            (None, 5, 300, 64)   0                                            
+__________________________________________________________________________________________________
+conv2d_1 (Conv2D)               (None, 64, 300, 64)  2944        input_1[0][0]                    
+__________________________________________________________________________________________________
+batch_normalization_1 (BatchNor (None, 64, 300, 64)  256         conv2d_1[0][0]                   
+__________________________________________________________________________________________________
+activation_1 (Activation)       (None, 64, 300, 64)  0           batch_normalization_1[0][0]      
+__________________________________________________________________________________________________
+max_pooling2d_1 (MaxPooling2D)  (None, 64, 60, 16)   0           activation_1[0][0]               
+__________________________________________________________________________________________________
+conv2d_2 (Conv2D)               (None, 128, 60, 16)  73856       max_pooling2d_1[0][0]            
+__________________________________________________________________________________________________
+batch_normalization_2 (BatchNor (None, 128, 60, 16)  64          conv2d_2[0][0]                   
+__________________________________________________________________________________________________
+activation_2 (Activation)       (None, 128, 60, 16)  0           batch_normalization_2[0][0]      
+__________________________________________________________________________________________________
+max_pooling2d_2 (MaxPooling2D)  (None, 128, 60, 4)   0           activation_2[0][0]               
+__________________________________________________________________________________________________
+conv2d_3 (Conv2D)               (None, 256, 60, 4)   295168      max_pooling2d_2[0][0]            
+__________________________________________________________________________________________________
+batch_normalization_3 (BatchNor (None, 256, 60, 4)   16          conv2d_3[0][0]                   
+__________________________________________________________________________________________________
+activation_3 (Activation)       (None, 256, 60, 4)   0           batch_normalization_3[0][0]      
+__________________________________________________________________________________________________
+max_pooling2d_3 (MaxPooling2D)  (None, 256, 60, 2)   0           activation_3[0][0]               
+__________________________________________________________________________________________________
+conformer_1 (Conformer)         (None, 256, 60, 2)   0           max_pooling2d_3[0][0]            
+                                                                 conformer_1[0][0]                
+__________________________________________________________________________________________________
+dense_19 (Dense)                (None, 256, 60, 256) 768         conformer_1[1][0]                
+__________________________________________________________________________________________________
+dense_20 (Dense)                (None, 256, 60, 128) 32896       dense_19[0][0]                   
+__________________________________________________________________________________________________
+reshape_13 (Reshape)            (None, 60, 32768)    0           dense_20[0][0]                   
+__________________________________________________________________________________________________
+bidirectional_1 (Bidirectional) (None, 60, 128)      25264896    reshape_13[0][0]                 
+__________________________________________________________________________________________________
+bidirectional_2 (Bidirectional) (None, 60, 128)      197376      bidirectional_1[0][0]            
+__________________________________________________________________________________________________
+time_distributed_1 (TimeDistrib (None, 60, 128)      16512       bidirectional_2[0][0]            
+__________________________________________________________________________________________________
+dropout_11 (Dropout)            (None, 60, 128)      0           time_distributed_1[0][0]         
+__________________________________________________________________________________________________
+time_distributed_2 (TimeDistrib (None, 60, 36)       4644        dropout_11[0][0]                 
+__________________________________________________________________________________________________
+doa_out (Activation)            (None, 60, 36)       0           time_distributed_2[0][0]         
+==================================================================================================
+Total params: 25,889,396
+Trainable params: 25,889,228
+Non-trainable params: 168
+__________________________________________________________________________________________________
+Dumping recording-wise val results in: ./results/2_mic_dev_val
+SELD metrics class: loaded : 600 reference files
+Epoch 1/5
+Device mapping:
+/job:localhost/replica:0/task:0/device:XLA_CPU:0 -> device: XLA_CPU device
+/job:localhost/replica:0/task:0/device:XLA_GPU:0 -> device: XLA_GPU device
