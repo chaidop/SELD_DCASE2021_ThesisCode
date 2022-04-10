@@ -1,0 +1,130 @@
+CHANGED KERNEL VERSION, BECAUSE THE 5.11 CANNOT CONNECT TO INTERNET
+INSTALLED linux-generic-5.15 because nvidia drivers not working(from: https://www.linuxcapable.com/how-to-install-linux-kernel-5-15-on-ubuntu-20-04/)
+
+
+Downloaded nvidia drivers from System+Updates 
+TRIED FROM DOWNLOADING THE RUN FILE FROM NVIDIA DRIVER SITE,
+BUT GOT ERRORS AND SCREEN SAID System+Updates better way
+
+>>>>>sudo prime-select nvidia
+>>>>>sudo update-initramfs -u
+
+	from: https://linuxconfig.org/how-to-install-the-nvidia-drivers-on-ubuntu-20-04-focal-fossa-linux
+	
+CUDA installed:
+	wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
+	sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
+	wget https://developer.download.nvidia.com/compute/cuda/11.5.1/local_installers/cuda-repo-ubuntu2004-11-5-local_11.5.1-495.29.05-1_amd64.deb
+	sudo dpkg -i cuda-repo-ubuntu2004-11-5-local_11.5.1-495.29.05-1_amd64.deb
+	sudo apt-key add /var/cuda-repo-ubuntu2004-11-5-local/7fa2af80.pub
+	sudo apt-get update
+	sudo apt-get -y install cuda
+
+	from : https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local
+
+	https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
+	
+	>>>>nvcc --version
+	NOW INSTALLED IT WITH >>>apt install nvidia-cuda-toolkit
+LOCATION: /usr/bin/nvcc
+location: /usr/local/cuda/
+	  /usr/lib/cuda
+	  
+	6/4/2022  Tensorlfow apaprently is reading from /usr/lib/x86../libcudnn.so.
+		  copied the files from the downloaded cudnn 7.6.5 (i also copied them to /usr/local/cuda)
+		  to the folder /usr/lib/x86.. (didnt change /usr/include/cudnn.h)
+		  and did chmod (as seen in official nvidia cudnn installation guide
+		  https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.htmls)
+		  
+		  copied them back before, now there is a libcudnn.so.8 file modified today
+		  in the .../x86.. folder and the programm does not work->need to comment out the gpu list devices code
+
+
+CHANGING NVIDIA PACKAGE FROM SOFTWARE&UPDATES UNINSTALLS NVCC-> HAVE TO REINSTALL nvidia-cuda-toolkits each time
+	
+Downloaded CUDNN
+
+NVIDIA-SMI NOT WORKING!!!!!!!!! NOW DOWNLOADED NVIDIA DRIVERS FROM SYSTEM+UPDATES
+
+NVIDIA-SMI WORKED! sudo ubuntu-drivers autoinstall 
+
+
+PROGRAMM KILLED ON UBUNTU, WINDOWS RUNS IT
+
+adde a script cuda_path.sh in /etc/profile.d/ where i export the path to the cuda library
+i exported the PATH and the LD_LIBRARY_PATH to /usr/local/cuda-11.6/bin and .../lib64 respectively.
+
+
+
+
+CANNOT VISUALIZE-> WHERE IS dcase_output=TRue????????/
+
+
+
+8/4/2022
+tf 2.8.0, 2.5.0 not working
+
+cuda 11.6, cudnn 7.4.6 not working
+cuda 11.6, cudnn 8.3.1 not working
+
+will try tf 2.2.0, cuda 10.1, cudnn 7.5
+OR try tf > 2.4. with cuda 11->worked for baseline 
+
+9/4/2022
+
+sometimes uninstalling keras and installing later works
+if there is a list devices error in tensorflow_backend, reinstall keras
+
+downloaded tf 2.4.1 and keras 2.4.1
+with cuda 11.6 and cudnn 8.1
+also may need to do online datra augm to work with google collab
+changed channels_first to channels_last because rank problem in bigru and lstm
+
+tried downloading tf-nightly-gpu->it got fucked:
+dont know why but tensorflow is fucked gives me cannot import dtesnor error
+versions 2.2, 2.0, 2.4.1, 1.15 and keras 2.4.1 and 2.3.1
+
+just deleted the keras folder from site-packages, it contained some folders that were installed with tf-nightly-gpu and were not deleted even with pip uninstall keras
+
+copied all windows files to ubuntu now they are same, to get the ubuntu version back, go to github on ubuntu branch and take files from todays date 9/4/2022
+
+10/4/2022
+installed tf 2.2
+trying to install cuda 10.1 and cudnn 7.5
+changed script /etc/profiler.d/cuda_path.sh from 11.6 to 10.1
+
+currently running cuda 11.6, cudnn 8.1 trying to run baseline with gpu(i also successfully done this on friday), but conformer could not run
+
+downloaded cuda 10.1 but libcublas was missing:
+https://github.com/tensorflow/tensorflow/issues/26182
+some library packages also downloade in /usr/local/cuda-10.2 (wtf nvidia)
+so i exported the path in /etc/profiler.d/cuda_path.sh from 10.1 to 10.2 in LD_LIBRARY_PATH
+
+made an error in above script and had to press ctr+alt+f3 and then i typed reboot and now wifi is not working!! wow great job! i love this so much i wanna killl myself
+
+cuda 10.1 and cudnn 7.6 not working->gives failed to initialize conv layer ..
+
+changed back to cuda 11.6 and cudnn 7.6 but does not work (cannot open libcublas.so.10(it has 11))
+
+NOT WORKING:
+tf 2.2.0, cuda 11.6, cudnn 7.6
+tf 2.2.0, cuda 10.1, cudnn 7.5
+tf 2.4.1, cuda 11.6, cudnn 8.3 only baseline
+
+changing all to tensorflow.keras
+trying with cuda 11.6, 7.6, tf 2.4.1, keras 2.4.1 
+gives error:failed to create cublas handle: CUBLAS_STATUS_NOT_INITIALIZED
+Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR
+tensorflow.python.framework.errors_impl.UnknownError:  Failed to get convolution algorithm. This is probably because cuDNN failed to initialize, so try looking to see if a warning log message was printed above.
+THIS COULD BE MEMORY PROBLEM! NOT VERSION
+
+will try cuda 11, cudnn 8.0.4
+did not have enough space on root, will reboot and try tf 2.2.0, cuda 10.1 and 7.6 (i know i already have but will try and fix)
+
+also google colab does not run so thats great i also spent money n memory on drive and still nothing
+
+very good! i have zero root space for some reason and now i cant even dowl=nload tensorflow!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+deleted an old kernel 
+
+tf 2.2.0, keras 2.3.1, cuda 10.1, cudnn 7.6.4
+copied old code that worked from saturday " resnet 18 and 34 copied from main branch "(it has keras.layers instead of before tensorflow.keras.layers in keras_models.py)
