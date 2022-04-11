@@ -93,7 +93,7 @@ installed tf 2.2
 trying to install cuda 10.1 and cudnn 7.5
 changed script /etc/profiler.d/cuda_path.sh from 11.6 to 10.1
 
-currently running cuda 11.6, cudnn 8.1 trying to run baseline with gpu(i also successfully done this on friday), but conformer could not run
+currently running cuda 11.6, cudnn 8.1 trying to run baseline with gpu(i also successfully done this on saturday), but conformer could not run
 
 downloaded cuda 10.1 but libcublas was missing:
 https://github.com/tensorflow/tensorflow/issues/26182
@@ -109,7 +109,7 @@ changed back to cuda 11.6 and cudnn 7.6 but does not work (cannot open libcublas
 NOT WORKING:
 tf 2.2.0, cuda 11.6, cudnn 7.6
 tf 2.2.0, cuda 10.1, cudnn 7.5
-tf 2.4.1, cuda 11.6, cudnn 8.3 only baseline
+tf 2.4.1, cuda 11.6, cudnn 8.4 only baseline
 
 changing all to tensorflow.keras
 trying with cuda 11.6, 7.6, tf 2.4.1, keras 2.4.1 
@@ -126,5 +126,32 @@ also google colab does not run so thats great i also spent money n memory on dri
 very good! i have zero root space for some reason and now i cant even dowl=nload tensorflow!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 deleted an old kernel 
 
-tf 2.2.0, keras 2.3.1, cuda 10.1, cudnn 7.6.4
+tf 2.2.0, keras 2.3.1, cuda 10.1, cudnn 7.6.4->Still same error as cuda 11.6, cudnn 7.6, tf 2.4.1 as above
 copied old code that worked from saturday " resnet 18 and 34 copied from main branch "(it has keras.layers instead of before tensorflow.keras.layers in keras_models.py)
+
+TODO:::
+get old ubuntu github from 9/4/2022 and try it with 2.4.1, 2..4.1, 11.6, 8.4->done, only cpu working, no libcusolver.so.10
+try the exact code from windows (uninstall cuda 10.1, install 11.0 and cudnn 8.0)
+none of the above worked...
+rolled back to commit of 9/4/2022 "tf 2.4.1. conformer debugging" and it worked,
+with tf 2.4.1, keras 2.4.1, cuda 11 (and also exported the cuda 10.1 and 10.2 lib64 to the LD_LIBRARY_PATH) and cudnn 8.4
+
+the old version worls for baseline! and on gpu as well(WITH TF AND CUDA MENTIONED IN ABOVE SENTENCE)
+but gives OOM with resnet and a different error with conformer
+
+lowering batch size to 2 and increazing epochs_per_fit to 10 made the resnet18 work!!
+resnet32 out of memory
+changed the resnet in order to come back to original dimensions after each stage
+(so it does not go 64->128->256->512 BUT 64->(128->)64->(256)->64->(512)->64)(pseudoresnet)
+added max pooling after each stage too
+parameters fell from 27 million to 5 million
+batch size 4, steps per epoch = 5
+
+changed conv2d to conv1d in res_conv_identity18 to lower parameters and memory
+
+for conformer::will try to call conformer_fun
+
+TODO:: buy new gpu 
+	look into google colab and if not into the lamda cloud gpu server
+	pytorch !!!!!
+	
