@@ -89,18 +89,28 @@ def res_identity18(x, filters):
     #renet block where dimension doesnot change.
     #The skip connection is just simple identity conncection
     #we will have 3 blocks and then input will be added
-    # copy tensor to variable called x_skip
     x_skip = x
+    # copy tensor to variable called x_skip
+    temp1, temp2 = x.shape[-2], x.shape[-1]
+    print(temp2, temp1)
+    ##reshape for 1d conv
+    #(64, 60, 16)->(60, ...)
+    x = K.permute_dimensions(x, (0,2,3,1))
+    x = Reshape((x.shape[-3]*x.shape[-2], x.shape[-1]))(x)
+    
     print("xskip ",x_skip)
     f1, f2 = filters
     # Layer 1
-    x = Conv2D(f1, (3,3), padding = 'same')(x)
-    x = BatchNormalization(axis=3)(x)
+    x = Conv1D(f1, 3, padding = 'same')(x)
+    x = BatchNormalization()(x)
     x = Activation('relu')(x)
     # Layer 2
-    x = Conv2D(f2, (3,3), padding = 'same')(x)
-    x = BatchNormalization(axis=3)(x)
+    x = Conv1D(f2, 3, padding = 'same')(x)
+    x = BatchNormalization()(x)
 
+    
+    x = Reshape((temp1, temp2, x.shape[-1]))(x)
+    x = Permute((3,1,2))(x)
     # Add Residue
     x = Add()([x, x_skip])
     print(x)
