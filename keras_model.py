@@ -508,11 +508,11 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     for nb_rnn_filt in rnn_size:
         print("FUEGOOOOOOOOOOOOOOOOO ",nb_rnn_filt)
         if decoder == 0:
-            spec_gru = GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
-                return_sequences=True)(spec_rnn)
-            spec_rnn = Reshape((spec_rnn.shape[-2], spec_rnn.shape[-1]))(spec_rnn)
-            print(spec_rnn.shape)
-            spec_rnn = Bidirectional(spec_gru, merge_mode='mul')(spec_rnn)
+            keras.backend.set_image_data_format('channels_last')
+            spec_rnn = Bidirectional(
+            GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+                return_sequences=True),
+                merge_mode='mul')(spec_rnn)
             
         elif decoder == 1:
             keras.backend.set_image_data_format('channels_last')
