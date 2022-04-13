@@ -346,8 +346,8 @@ class Conformer(Layer):
         return spec_cnn
 
 def Conformer_fun(spec_cnn, dconv_kernel_size):
-    dim_head = 64
-    num_heads = 8
+    dim_head = 32
+    num_heads = 4
     print(spec_cnn)
     res_spec = spec_cnn
     print("FFN")
