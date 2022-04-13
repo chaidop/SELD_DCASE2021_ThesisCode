@@ -262,14 +262,14 @@ def resnet18(input_im):
     x = res_identity18(x, filters=(64, 64))
     print("1",x)
     # 3rd stage
-    x = res_conv18(x, s=2, filters=(128, 512))
-    x = res_identity18(x, filters=(128, 512))
-    x = res_identity18(x, filters=(128, 512))
+    x = res_conv18(x, s=2, filters=(128, 128))
+    x = res_identity18(x, filters=(128, 128))
+    x = res_identity18(x, filters=(128, 128))
     print("2",x)
     # 4th stage
-    x = res_conv18(x, s=2, filters=(256, 1024))
-    x = res_identity18(x, filters=(256, 1024))
-    x = res_identity18(x, filters=(256, 1024))
+    x = res_conv18(x, s=2, filters=(256, 256))
+    x = res_identity18(x, filters=(256, 256))
+    x = res_identity18(x, filters=(256, 256))
     print("3",x)
     # ends with average pooling and dense connection
     #x = AveragePooling2D((2, 2), padding='same')(x)
@@ -417,7 +417,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         
         #print(spec_c_cnn)
         for i in range(depth):
-            spec_cnn = model( spec_cnn, dconv_kernel_size=31)
+            spec_cnn = Conformer_fun( spec_cnn, dconv_kernel_size=31)
         
         print("Conformer out ", spec_cnn.shape)
         #(60,512) with models_2d.py
