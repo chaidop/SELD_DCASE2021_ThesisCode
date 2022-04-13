@@ -6,7 +6,7 @@
 #from tensorflow import keras
 
 import tensorflow.keras
-from keras.layers import Lambda,Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
+from keras.layers import Lambda,Bidirectional, Conv2D, Conv1D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
 from keras.layers.recurrent import GRU, LSTM
 from keras.layers.normalization import BatchNormalization
@@ -91,13 +91,14 @@ def res_identity18(x, filters):
     #we will have 3 blocks and then input will be added
     # copy tensor to variable called x_skip
     x_skip = x
+    print("xskip ",x_skip)
     f1, f2 = filters
     # Layer 1
     x = Conv2D(f1, (3,3), padding = 'same')(x)
     x = BatchNormalization(axis=3)(x)
     x = Activation('relu')(x)
     # Layer 2
-    x = Conv2D(f1, (3,3), padding = 'same')(x)
+    x = Conv2D(f2, (3,3), padding = 'same')(x)
     x = BatchNormalization(axis=3)(x)
 
     # Add Residue
@@ -135,7 +136,7 @@ def res_conv(x, s, filters):
     print(x)
 
     # shortcut, Processing Residue with conv(1,1)
-    x_skip = Conv2D(f2, kernel_size=(1, 1), strides=(s, s), kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x_skip)
+    x_skip = Conv2D(f1, kernel_size=(1, 1), strides=(s, s), kernel_regularizer=tensorflow.keras.regularizers.l2(0.001))(x_skip)
     print(x)
     x_skip = BatchNormalization()(x_skip)
     print(x)
@@ -158,10 +159,10 @@ def res_conv18(x, s, filters):
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     # Layer 2
-    x = Conv2D(f1, kernel_size=(3,3), padding = 'same')(x)
+    x = Conv2D(f2, kernel_size=(3,3), padding = 'same')(x)
     x = BatchNormalization()(x)
     # Processing Residue with conv(1,1)
-    x_skip = Conv2D(f1, kernel_size=(1,1), strides = (1,1))(x_skip)
+    x_skip = Conv2D(f2, kernel_size=(1,1), strides = (1,1))(x_skip)
     # Add Residue
     x = Add()([x, x_skip])     
     x = Activation('relu')(x)
@@ -180,6 +181,7 @@ def resnet34(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
     print(spec_cnn)
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt, nb_cnn2d_filt))
+    spec_cnn = MaxPooling2D(pool_size=(1, 2))(spec_cnn)
     print(spec_cnn)
     # 3rd stage
     print("\n############ STAGE 2 ##############\n")
@@ -194,36 +196,36 @@ def resnet34(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
     spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*2, nb_cnn2d_filt*2))
     print(spec_cnn)
 
-    #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
+    spec_cnn = MaxPooling2D(pool_size=(t_pool_size[1], f_pool_size[1]))(spec_cnn)
     spec_cnn = Dropout(0.2)(spec_cnn)
     # 4th stage
     print("\n############ STAGE 3 ##############\n")
-    spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt*4))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*4, nb_cnn2d_filt))
     print(spec_cnn)
 
-    #spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
+    spec_cnn = MaxPooling2D(pool_size=(t_pool_size[2], f_pool_size[2]))(spec_cnn)
     spec_cnn = Dropout(0.2)(spec_cnn)
     # 5th stage
     print("\n############ STAGE 4 ##############\n")
-    spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    spec_cnn = res_conv18(spec_cnn, s=2, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt))
     print(spec_cnn)
-    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt*8))
+    spec_cnn = res_identity18(spec_cnn, filters=(nb_cnn2d_filt*8, nb_cnn2d_filt))
     print(spec_cnn)
 
     print(spec_cnn)
