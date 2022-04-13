@@ -67,7 +67,11 @@ class ComputeSELDResults(object):
             if self._use_polar_format:
                 pred_dict = self._feat_cls.convert_output_format_cartesian_to_polar(pred_dict)
             pred_labels = self._feat_cls.segment_labels(pred_dict, self._feat_cls.get_nb_frames())
-
+            ##CUSTOM check if it has 'augm' in name
+            #if true, then concatenate name to not include it
+            if 'augm' in pred_file:
+                pred_file = pred_file[:-9]
+                pred_file = pred_file + '.csv'
             # Calculated scores
             eval.update_seld_scores(pred_labels, self._ref_labels[pred_file])
 

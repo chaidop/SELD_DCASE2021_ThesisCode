@@ -13,6 +13,7 @@ import librosa
 plot.switch_backend('agg')
 import shutil
 import math
+from data_augmentation import *
 
 
 def nCr(n, r):
@@ -22,7 +23,6 @@ def nCr(n, r):
 class FeatureClass:
     def __init__(self, params, is_eval=False):
         """
-
         :param params: parameters dictionary
         :param is_eval: if True, does not load dataset labels.
         """
@@ -60,6 +60,10 @@ class FeatureClass:
         self._dataset = params['dataset']
         self._eps = 1e-8
         self._nb_channels = 4
+
+        #### CUSTOM array of indexes of augmented files
+        self.augm_indx = []
+        self._data_augm = params['data_augm']
 
         # Sound event classes dictionary
         self._unique_classes = params['unique_classes']
@@ -147,7 +151,6 @@ class FeatureClass:
     def get_labels_for_file(self, _desc_file):
         """
         Reads description file and returns classification based SED labels and regression based DOA labels
-
         :param _desc_file: metadata description file
         :return: label_mat: labels of the format [sed_label, doa_label],
         where sed_label is of dimension [nb_frames, nb_classes] which is 1 for active sound event else zero
@@ -188,7 +191,6 @@ class FeatureClass:
 
                 #extract mel
                 mel_spect = self._get_mel_spectrogram(spect)
-
                 feat = None
                 if self._dataset == 'foa':
                     # extract intensity vectors
@@ -204,7 +206,18 @@ class FeatureClass:
 
                 if feat is not None:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                    ##### CUSTOM data augmentation that does not change label, only in train dataset
+                    if not self._is_eval and self._data_augm is not 0:
+                        feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                        if was_augmented:
+                            #have a list of the names of files that were augmented, to copy the labels on that index
+                            self.augm_indx = np.append(self.augm_indx, file_name)
+                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat_augm)
+                            print('\t{}: {}_augm, {}'.format(file_cnt, file_name, feat.shape ))
+                    #######
                     np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
+
+                    
 
     def preprocess_features(self):
         # Setting up folders and filenames
@@ -251,6 +264,8 @@ class FeatureClass:
 
     # ------------------------------- EXTRACT LABELS AND PREPROCESS IT -------------------------------
     def extract_all_labels(self):
+        i = 0
+
         self._label_dir = self.get_label_dir()
 
         print('Extracting labels:')
@@ -259,19 +274,26 @@ class FeatureClass:
         create_folder(self._label_dir)
         for split in os.listdir(self._desc_dir):
             print('Split: {}'.format(split))
-            for file_cnt, file_name in enumerate(os.listdir(os.path.join(self._desc_dir, split))):
-                wav_filename = '{}.wav'.format(file_name.split('.')[0])
-                desc_file_polar = self.load_output_format_file(os.path.join(self._desc_dir, split, file_name))
-                desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
-                label_mat = self.get_labels_for_file(desc_file)
-                print('\t{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
-                np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
+            if split != 'desktop.ini':
+                for file_cnt, file_name in enumerate(os.listdir(os.path.join(self._desc_dir, split))):
+                    wav_filename = '{}.wav'.format(file_name.split('.')[0])
+                    desc_file_polar = self.load_output_format_file(os.path.join(self._desc_dir, split, file_name))
+                    desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
+                    label_mat = self.get_labels_for_file(desc_file)
+                    print('\t{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
+                    np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
+                    #CUSTOM save twice if the file is augmented
+                    ##in ubuntu files not saved alphabeticaly, so need to run whole list to check for current file
+                    print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
+                    for i in range(len(self.augm_indx)):
+                        if self.augm_indx[i] == wav_filename :
+                            np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
+                            break
 
     # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
     def load_output_format_file(self, _output_format_file):
         """
         Loads DCASE output format csv file and returns it in dictionary format
-
         :param _output_format_file: DCASE output format CSV
         :return: _output_dict: dictionary
         """
@@ -293,7 +315,6 @@ class FeatureClass:
     def write_output_format_file(self, _output_format_file, _output_format_dict):
         """
         Writes DCASE output format csv file, given output format dictionary
-
         :param _output_format_file:
         :param _output_format_dict:
         :return:
@@ -350,7 +371,6 @@ class FeatureClass:
     def regression_label_format_to_output_format(self, _sed_labels, _doa_labels):
         """
         Converts the sed (classification) and doa labels predicted in regression format to dcase output format.
-
         :param _sed_labels: SED labels matrix [nb_frames, nb_classes]
         :param _doa_labels: DOA labels matrix [nb_frames, 2*nb_classes] or [nb_frames, 3*nb_classes]
         :return: _output_dict: returns a dict containing dcase output format
