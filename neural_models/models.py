@@ -267,26 +267,20 @@ def scaled_dot_product_attention(input_vector, pos_emb):
     Q, K, V = input_vector
     ## Q*K^T
     #K = tf.transpose(K, perm=[0,1,3,2])
-    #K = Reshape((K.shape[1], K.shape[2], K.shape[3]*K.shape[4]))(K)
-    #K = Permute((1,3,2), input_shape=K.shape)(K)
-    #K = Reshape((K.shape[1],  K.shape[-1], Q.shape[4], Q.shape[3]))(K)
-    QK_mult = tf.einsum("...HNO,...HMO->...HNM", Q, K)
+    QK_mult = tf.matmul(Q,K, transpose_b=True) #(...,..., seq_len, seq_len)
     print(QK_mult) 
-    QK_mult1 = keras.layers.Dot(axes=(4, 3))([QK_mult, QK_mult])
     dk = tf.cast(K.shape[-1], tf.float32)   #depth
     print(1/tf.math.sqrt(dk))
     #postitional_encoding*Q
-    #pos_emb = Reshape((pos_emb.shape[2], pos_emb.shape[3], pos_emb.shape[4]))(pos_emb)
-    #pos_emb = Permute((1,3,2))(pos_emb)
-    #pos_emb = Reshape((1, 1, pos_emb.shape[2], pos_emb.shape[3], pos_emb.shape[4]))(pos_emb)
-    pose = tf.matmul(Q,pos_emb, transpose_b=True)#tf.einsum("...HNO,...HMO->...HNM", Q , pos_emb)    #(...,..., seq_len, seq_len_posemb)
+    pose = tf.matmul(Q,pos_emb, transpose_b=True) #(...,..., seq_len, seq_len_posemb)
     #pose = tf.transpose(pose , perm=[0, 1, 3, 2])
-    pose_cut = pose[:,:,:,:,:QK_mult.shape[-1]]
-    product = (QK_mult + pose_cut )/tf.math.sqrt(dk)
+
+    product = (QK_mult + pose[:,:,:,:,:QK_mult.shape[-1]] )/tf.math.sqrt(dk)
     print(product)
     ## the scaled self attention equation (page 4, "Attention is all you need")
     attention_weights = tf.nn.softmax(product, axis=-1)#(...,..., seq_len, seq_len)
-    attention = tf.einsum("...HSZ,...HSD->...HSD", attention_weights, V)#(...,..., seq_len, depth)
+    attention = tf.matmul(attention_weights, V)#(...,..., seq_len, depth)
+
     return attention, attention_weights
 
     def compute_output_shape(self, input_shape):
