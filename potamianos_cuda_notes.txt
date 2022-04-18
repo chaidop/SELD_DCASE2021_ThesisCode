@@ -150,7 +150,7 @@ batch size 4, steps per epoch = 5
 changed conv2d to conv1d in res_conv_identity18 to lower parameters and memory
 
 for conformer::will try to call conformer_fun
-
+changed colab keras_models.py version to that i run in vienna from windows
 TODO:: buy new gpu 
 	look into google colab and if not into the lamda cloud gpu server
 	pytorch !!!!!
