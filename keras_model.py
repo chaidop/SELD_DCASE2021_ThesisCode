@@ -22,6 +22,7 @@ from neural_models.models import Conformer, Conformer_fun
 import os
 
 from keras import backend as K
+from neural_models.conformer_tf import *
 #K.tensorflow_backend._get_available_gpus()
 
 from numba import jit, cuda
@@ -37,13 +38,16 @@ for device in physical_devices:
 
 config = tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True))
 sess = tf.compat.v1.Session(config=config)
-
+'''
+import tensorboard
+tensorboard.__version__
+'''
 #sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
 
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 ''' 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -54,6 +58,12 @@ configuration = tf.compat.v1.ConfigProto()
 configuration.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=configuration)
 '''
+def ensemble(x):
+    #3 conv layers and a resnet18 with 
+
+
+    ####
+    x2 = resnet18(x)
 def res_identity(x, filters):
     #renet block where dimension doesnot change.
     #The skip connection is just simple identity conncection
@@ -396,7 +406,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         #print("INITIAL SHAPE ", spec_cnn)
         ###(10, 300, 64) (CHANNELS, timesteps(sequence length per sample), mel-spectogramms per audio file)
         ### subsampling (DCASE2021_Zhang_67_t3.pdf)
-        spec_cnn = keras.layers.Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+        spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
         #print("(64, 300, 64) ",spec_cnn)
         spec_cnn = BatchNormalization()(spec_cnn)
         spec_cnn = Activation('relu')(spec_cnn)
@@ -415,15 +425,15 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         ###(256, 60, 2)
         ### Conformer
         #print("Before conformer ", spec_cnn)
-        model = Conformer()
+        #model = Conformer()
         print("model printed")
         ##Zhang and Ko use 2 and 3 conformers respectively
         
         #print(spec_c_cnn)
         for i in range(depth):
-            spec_cnn = Conformer_fun( spec_cnn[:64,:,:], dconv_kernel_size=31)
+            spec_cnn = Conformer_fun( spec_cnn, dconv_kernel_size=31)
         
-        print("Conformer out ", spec_cnn.shape)
+        print("Conformer out ", spec_cnn.shape, spec_cnn[:,1,1])
         #(60,512) with models_2d.py
         #(256, 60, 2) with models.py
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
@@ -438,6 +448,75 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     if model_approach == 4:
         import tensorflow as tf
         tf.test.gpu_device_name()
+
+    elif model_approach == 5:
+        ##Ko's implementation kinda
+        ###STAGE 1 
+        """
+        x = Conv2D(64, kernel_size=(7, 7), padding='same')(x)
+        print(x)
+        x = BatchNormalization()(x)
+        print(x)
+        x = Activation('relu')(x)
+        print(x)
+        x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
+        """
+        ##ensemble
+        start = spec_cnn
+        ##1st ensemble::: baseline
+        for i, convCnt in enumerate(f_pool_size):
+            spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+            spec_cnn = BatchNormalization()(spec_cnn)
+            spec_cnn = Activation('relu')(spec_cnn)
+            spec_cnn = MaxPooling2D(pool_size=(t_pool_size[i], f_pool_size[i]))(spec_cnn)
+            spec_cnn = Dropout(dropout_rate)(spec_cnn)
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
+
+        ##2nd ensemble::: resnet18
+        x = start
+        #x = ZeroPadding2D(padding=(3, 3))(x)
+        x = Conv2D(64, kernel_size=(7, 7), padding='same')(x)
+        print(x)
+        x = BatchNormalization()(x)
+        print(x)
+        x = Activation('relu')(x)
+        print(x)
+        x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
+        print(x)
+        x = resnet18(x)
+        #added maxpool for reshaping output
+        x = Permute((2, 1, 3))(x)
+        ##need to pool to bring sequence to (60,64,2) dimension(seq-len, mel-bands, idk(??))
+        x = AveragePooling2D(pool_size=(4,6), padding='same')(x)
+
+        ##ensemble: AVergae prediction:
+        pr = Add()([x, spec_cnn])
+        spec_cnn = pr//2
+    elif model_approach == 6:
+        spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
+        #print("(64, 300, 64) ",spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(1,4))(spec_cnn)
+        #print("(64, 60, 16) ", spec_cnn)
+        ###(64, 60, 16)
+        spec_cnn = Conv2D(256, kernel_size=(3, 3), padding='same')(spec_cnn)
+        spec_cnn = BatchNormalization()(spec_cnn)
+        spec_cnn = Activation('relu')(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(1,4))(spec_cnn)
+        spec_cnn = MaxPooling2D(pool_size=(5,2))(spec_cnn)
+
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
+        
+        spec_cnn = ConformerBlock(dim = 512, inputs= spec_cnn)
+        print("output conformer ", spec_cnn.shape)
+        
+        #(60, 512)
+        ###### DENSE LAYERS #########
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
+        spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
+
     """
         #####
         #spec_cnn = ZeroPadding2D(padding=(6, 6))(spec_cnn)
@@ -524,8 +603,9 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
                 return_sequences=True)(spec_rnn)
     print(spec_cnn)
     # FC - DOA
-    #keras.backend.set_image_data_format('channels_first')
     doa = spec_rnn
+    #Kos sed cofnormer
+    #spec_rnn = Conformer_fun( spec_rnn, dconv_kernel_size=7, num_heads=2 , dim_head=6)
     for nb_fnn_filt in fnn_size:
         doa = TimeDistributed(Dense(nb_fnn_filt))(doa)
         doa = Dropout(dropout_rate)(doa)
@@ -534,9 +614,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     doa = Activation('tanh', name='doa_out')(doa)
     print(spec_cnn)
     #model = None
+    # CUSTOM added BinaryCrossentropy loss as seen in Xytos diplwmatikh,
     if is_accdoa:
         model = Model(inputs=spec_start, outputs=doa)
-        model.compile(optimizer=Adam(), loss='mse')
+        model.compile(optimizer=Adam(), loss='binary_crossentropy')#loss='mse')
     else:
         # FC - SED
         sed = spec_rnn
