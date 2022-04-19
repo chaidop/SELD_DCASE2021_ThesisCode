@@ -155,3 +155,6 @@ TODO:: buy new gpu
 	look into google colab and if not into the lamda cloud gpu server
 	pytorch !!!!!
 	
+19/4/2022
+	ASUS: baseline trying to implement specaugment in data_generator.py
+	also implement swa (from Ko's IRIS-SELD) in seld.py
