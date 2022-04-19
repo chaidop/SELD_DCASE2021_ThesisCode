@@ -8,6 +8,7 @@ import cls_feature_class
 from IPython import embed
 from collections import deque
 import random
+from data_augmentation import *
 
 
 class DataGenerator(object):
@@ -41,6 +42,10 @@ class DataGenerator(object):
         self._label_batch_seq_len = self._batch_size*self._label_seq_len
         self._circ_buf_feat = None
         self._circ_buf_label = None
+
+        #CUSTOM
+        self.augm_indx = []
+        self.data_augm = params['data_augm']
 
         if self._per_file:
             self._nb_total_batches = len(self._filenames_list)
@@ -191,16 +196,45 @@ class DataGenerator(object):
                     # Read one batch size from the circular buffer
                     feat = np.zeros((self._feature_batch_seq_len, self._nb_mel_bins * self._nb_ch))
                     label = np.zeros((self._label_batch_seq_len, self._label_len))
+
                     for j in range(self._feature_batch_seq_len):
+                        #(1200, 640) = (feature_batch_len, ch*mel_bins)
                         feat[j, :] = self._circ_buf_feat.popleft()
                     for j in range(self._label_batch_seq_len):
                         label[j, :] = self._circ_buf_label.popleft()
+
+                    #(1200, 300, 64) (BATCH_SEQ_LEN, CHAN, MEL_BINS)
                     feat = np.reshape(feat, (self._feature_batch_seq_len, self._nb_ch, self._nb_mel_bins)).transpose((0, 2, 1))
 
                     # Split to sequences
+                    #(4, 300, 64, 10) (NB_CH, SEQ_LEN, MEL_BINS, CHAN)
                     feat = self._split_in_seqs(feat, self._feature_seq_len)
                     feat = np.transpose(feat, (0, 3, 1, 2))
+                    ##CUSTOM extra arameter to augment the list if 
+                    # a data augmented feature is added
+                    extra = 0
+                    ##CUSTOM add a data augmented feature in the array
+                    if self.data_augm == 1:
+                        for j in range(feat.shape[0] + extra):
+                            was_augm = False
+                            feat_augm, was_augm = SpecAugmentNp(nb_ch = self._nb_ch, nb_mel_bins=self._nb_mel_bins)(feat[j, :, :, :])
+                            if was_augm is True:
+                                #have a list of the indexes of files that were augmented, to copy the labels on that index
+                                extra += 1
+                                j += 1
+                                np.insert(feat, j, [feat_augm], axis=0)
+                                self.augm_indx = np.append(self.augm_indx, j)
+
                     label = self._split_in_seqs(label, self._label_seq_len)
+                    #CUSTOM search through labels and append a copy of a label at the augmented index
+                    #if index is augmented, copy label twice
+                    for j in range(label.shape[0]):
+                        for i in range(len(self.augm_indx)):
+                            #copy the label of the previous step
+                            if self.augm_indx[i] == j :
+                                np.insert(label, j, [label[j,:,:]], axis=0)
+                                break
+
                     if self._is_accdoa:
                         mask = label[:, :, :self._nb_classes]
                         mask = np.tile(mask, 3)
