@@ -40,7 +40,7 @@ def get_params(argv='1'):
         dcase_output_dir='./results/',    # recording-wise results are dumped in this path.
 
         # DATASET LOADING PARAMETERS
-        mode='eval',          # 'dev' - development or 'eval' - evaluation dataset
+        mode='dev',          # 'dev' - development or 'eval' - evaluation dataset
         dataset='mic',       # 'foa' - ambisonic or 'mic' - microphone signals
 
         #FEATURE PARAMS
