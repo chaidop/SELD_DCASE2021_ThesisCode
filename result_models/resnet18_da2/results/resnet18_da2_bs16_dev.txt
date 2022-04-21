@@ -1,0 +1,960 @@
+PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')
+true
+[name: "/device:CPU:0"
+device_type: "CPU"
+memory_limit: 268435456
+locality {
+}
+incarnation: 4072620079073512372
+, name: "/device:GPU:0"
+device_type: "GPU"
+memory_limit: 7008422464
+locality {
+  bus_id: 1
+  links {
+  }
+}
+incarnation: 14269831397613569962
+physical_device_desc: "device: 0, name: NVIDIA GeForce RTX 3050, pci bus id: 0000:01:00.0, compute capability: 8.6"
+]
+True
+['seld.py', '2', 'resnet18_da2_bs16_dev']
+SET: 2
+	model_approach: 1
+	dconv_kernel_size: 31
+	nb_conf: 2
+	decoder: 0
+	data_augm: 2
+	quick_test: False
+	dataset_dir: input_data
+	feat_label_dir: seld_feat_label
+	model_dir: models
+	dcase_output_dir: results
+	mode: dev
+	dataset: mic
+	fs: 24000
+	hop_len_s: 0.02
+	label_hop_len_s: 0.1
+	max_audio_len_s: 60
+	nb_mel_bins: 64
+	is_accdoa: True
+	doa_objective: mse
+	label_sequence_length: 60
+	batch_size: 16
+	dropout_rate: 0.05
+	nb_cnn2d_filt: 64
+	f_pool_size: [4, 4, 2]
+	rnn_size: [128, 128]
+	fnn_size: [128]
+	loss_weights: [1.0, 1000.0]
+	nb_epochs: 40
+	epochs_per_fit: 5
+	lad_doa_thresh: 20
+	feature_sequence_length: 300
+	t_pool_size: [5, 1, 1]
+	patience: 40
+	unique_classes: {'alarm': 0, 'baby': 1, 'crash': 2, 'dog': 3, 'female_scream': 4, 'female_speech': 5, 'footsteps': 6, 'knock': 7, 'male_scream': 8, 'male_speech': 9, 'phone': 10, 'piano': 11}
+
+
+---------------------------------------------------------------------------------------------------
+------------------------------------      SPLIT 6   -----------------------------------------------
+---------------------------------------------------------------------------------------------------
+unique_name: models\2_resnet18_da2_bs16_dev_mic_dev_split6
+
+Loading training dataset:
+	Datagen_mode: dev, nb_files: 598, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: [1, 2, 3, 4]
+	batch_size: 16, feat_seq_len: 300, label_seq_len: 60, shuffle: True
+	Total batches in dataset: 373
+	label_dir: seld_feat_label\mic_dev_label
+ 	feat_dir: seld_feat_label\mic_dev_norm
+
+Loading validation dataset:
+	Datagen_mode: dev, nb_files: 151, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: 5
+	batch_size: 10, feat_seq_len: 300, label_seq_len: 60, shuffle: False
+	Total batches in dataset: 151
+	label_dir: seld_feat_label\mic_dev_label
+ 	feat_dir: seld_feat_label\mic_dev_norm
+
+FEATURES:
+	data_in: (16, 10, 300, 64)
+	data_out: (16, 60, 36)
+
+MODEL:
+	dropout_rate: 0.05
+	CNN: nb_cnn_filt: 64, f_pool_size[4, 4, 2], t_pool_size[5, 1, 1]
+	rnn_size: [128, 128], fnn_size: [128]
+	doa_objective: mse
+
+Using loss weights : [1.0, 1000.0]
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 300, 64), dtype=tf.float32, name=None), name='conv2d/BiasAdd:0', description="created by layer 'conv2d'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 300, 64), dtype=tf.float32, name=None), name='batch_normalization/FusedBatchNormV3:0', description="created by layer 'batch_normalization'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 300, 64), dtype=tf.float32, name=None), name='activation/Relu:0', description="created by layer 'activation'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 60, 16), dtype=tf.float32, name=None), name='max_pooling2d/MaxPool:0', description="created by layer 'max_pooling2d'")
+hello
+
+what KerasTensor(type_spec=TensorSpec(shape=(None, 64, 60, 16), dtype=tf.float32, name=None), name='conv2d_1/BiasAdd:0', description="created by layer 'conv2d_1'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 60, 16), dtype=tf.float32, name=None), name='add_1/add:0', description="created by layer 'add_1'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 60, 16), dtype=tf.float32, name=None), name='activation_4/Relu:0', description="created by layer 'activation_4'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 60, 16), dtype=tf.float32, name=None), name='add_2/add:0', description="created by layer 'add_2'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 64, 60, 16), dtype=tf.float32, name=None), name='activation_6/Relu:0', description="created by layer 'activation_6'")
+1 KerasTensor(type_spec=TensorSpec(shape=(None, 64, 60, 16), dtype=tf.float32, name=None), name='activation_6/Relu:0', description="created by layer 'activation_6'")
+what KerasTensor(type_spec=TensorSpec(shape=(None, 128, 60, 16), dtype=tf.float32, name=None), name='conv2d_8/BiasAdd:0', description="created by layer 'conv2d_8'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 128, 60, 16), dtype=tf.float32, name=None), name='add_4/add:0', description="created by layer 'add_4'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 128, 60, 16), dtype=tf.float32, name=None), name='activation_10/Relu:0', description="created by layer 'activation_10'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 128, 60, 16), dtype=tf.float32, name=None), name='add_5/add:0', description="created by layer 'add_5'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 128, 60, 16), dtype=tf.float32, name=None), name='activation_12/Relu:0', description="created by layer 'activation_12'")
+2 KerasTensor(type_spec=TensorSpec(shape=(None, 128, 60, 16), dtype=tf.float32, name=None), name='activation_12/Relu:0', description="created by layer 'activation_12'")
+what KerasTensor(type_spec=TensorSpec(shape=(None, 256, 60, 16), dtype=tf.float32, name=None), name='conv2d_15/BiasAdd:0', description="created by layer 'conv2d_15'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 256, 60, 16), dtype=tf.float32, name=None), name='add_7/add:0', description="created by layer 'add_7'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 256, 60, 16), dtype=tf.float32, name=None), name='activation_16/Relu:0', description="created by layer 'activation_16'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 256, 60, 16), dtype=tf.float32, name=None), name='add_8/add:0', description="created by layer 'add_8'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 256, 60, 16), dtype=tf.float32, name=None), name='activation_18/Relu:0', description="created by layer 'activation_18'")
+3 KerasTensor(type_spec=TensorSpec(shape=(None, 256, 60, 16), dtype=tf.float32, name=None), name='activation_18/Relu:0', description="created by layer 'activation_18'")
+what KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 16), dtype=tf.float32, name=None), name='conv2d_22/BiasAdd:0', description="created by layer 'conv2d_22'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 16), dtype=tf.float32, name=None), name='add_10/add:0', description="created by layer 'add_10'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 16), dtype=tf.float32, name=None), name='activation_22/Relu:0', description="created by layer 'activation_22'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 16), dtype=tf.float32, name=None), name='add_11/add:0', description="created by layer 'add_11'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 16), dtype=tf.float32, name=None), name='activation_24/Relu:0', description="created by layer 'activation_24'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 16), dtype=tf.float32, name=None), name='activation_24/Relu:0', description="created by layer 'activation_24'")
+128
+KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 16), dtype=tf.float32, name=None), name='activation_24/Relu:0', description="created by layer 'activation_24'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 512, 60, 512), dtype=tf.float32, name=None), name='dense/Relu:0', description="created by layer 'dense'")
+pool  KerasTensor(type_spec=TensorSpec(shape=(None, 60, 128, 2), dtype=tf.float32, name=None), name='average_pooling2d/AvgPool:0', description="created by layer 'average_pooling2d'")
+data_out[-2]:
+60
+(None, 60, 128, 2)
+FUEGOOOOOOOOOOOOOOOOO  128
+FUEGOOOOOOOOOOOOOOOOO  128
+KerasTensor(type_spec=TensorSpec(shape=(None, 60, 128, 2), dtype=tf.float32, name=None), name='average_pooling2d/AvgPool:0', description="created by layer 'average_pooling2d'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 60, 128, 2), dtype=tf.float32, name=None), name='average_pooling2d/AvgPool:0', description="created by layer 'average_pooling2d'")
+KerasTensor(type_spec=TensorSpec(shape=(None, 60, 128, 2), dtype=tf.float32, name=None), name='average_pooling2d/AvgPool:0', description="created by layer 'average_pooling2d'")
+Model: "model"
+__________________________________________________________________________________________________
+Layer (type)                    Output Shape         Param #     Connected to                     
+==================================================================================================
+input_1 (InputLayer)            [(None, 10, 300, 64) 0                                            
+__________________________________________________________________________________________________
+conv2d (Conv2D)                 (None, 64, 300, 64)  31424       input_1[0][0]                    
+__________________________________________________________________________________________________
+batch_normalization (BatchNorma (None, 64, 300, 64)  256         conv2d[0][0]                     
+__________________________________________________________________________________________________
+activation (Activation)         (None, 64, 300, 64)  0           batch_normalization[0][0]        
+__________________________________________________________________________________________________
+max_pooling2d (MaxPooling2D)    (None, 64, 60, 16)   0           activation[0][0]                 
+__________________________________________________________________________________________________
+conv2d_1 (Conv2D)               (None, 64, 60, 16)   36928       max_pooling2d[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_1 (BatchNor (None, 64, 60, 16)   64          conv2d_1[0][0]                   
+__________________________________________________________________________________________________
+activation_1 (Activation)       (None, 64, 60, 16)   0           batch_normalization_1[0][0]      
+__________________________________________________________________________________________________
+conv2d_2 (Conv2D)               (None, 64, 60, 16)   36928       activation_1[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_2 (BatchNor (None, 64, 60, 16)   64          conv2d_2[0][0]                   
+__________________________________________________________________________________________________
+conv2d_3 (Conv2D)               (None, 64, 60, 16)   4160        max_pooling2d[0][0]              
+__________________________________________________________________________________________________
+add (Add)                       (None, 64, 60, 16)   0           batch_normalization_2[0][0]      
+                                                                 conv2d_3[0][0]                   
+__________________________________________________________________________________________________
+activation_2 (Activation)       (None, 64, 60, 16)   0           add[0][0]                        
+__________________________________________________________________________________________________
+conv2d_4 (Conv2D)               (None, 64, 60, 16)   36928       activation_2[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_3 (BatchNor (None, 64, 60, 16)   64          conv2d_4[0][0]                   
+__________________________________________________________________________________________________
+activation_3 (Activation)       (None, 64, 60, 16)   0           batch_normalization_3[0][0]      
+__________________________________________________________________________________________________
+conv2d_5 (Conv2D)               (None, 64, 60, 16)   36928       activation_3[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_4 (BatchNor (None, 64, 60, 16)   64          conv2d_5[0][0]                   
+__________________________________________________________________________________________________
+add_1 (Add)                     (None, 64, 60, 16)   0           batch_normalization_4[0][0]      
+                                                                 activation_2[0][0]               
+__________________________________________________________________________________________________
+activation_4 (Activation)       (None, 64, 60, 16)   0           add_1[0][0]                      
+__________________________________________________________________________________________________
+conv2d_6 (Conv2D)               (None, 64, 60, 16)   36928       activation_4[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_5 (BatchNor (None, 64, 60, 16)   64          conv2d_6[0][0]                   
+__________________________________________________________________________________________________
+activation_5 (Activation)       (None, 64, 60, 16)   0           batch_normalization_5[0][0]      
+__________________________________________________________________________________________________
+conv2d_7 (Conv2D)               (None, 64, 60, 16)   36928       activation_5[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_6 (BatchNor (None, 64, 60, 16)   64          conv2d_7[0][0]                   
+__________________________________________________________________________________________________
+add_2 (Add)                     (None, 64, 60, 16)   0           batch_normalization_6[0][0]      
+                                                                 activation_4[0][0]               
+__________________________________________________________________________________________________
+activation_6 (Activation)       (None, 64, 60, 16)   0           add_2[0][0]                      
+__________________________________________________________________________________________________
+conv2d_8 (Conv2D)               (None, 128, 60, 16)  73856       activation_6[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_7 (BatchNor (None, 128, 60, 16)  64          conv2d_8[0][0]                   
+__________________________________________________________________________________________________
+activation_7 (Activation)       (None, 128, 60, 16)  0           batch_normalization_7[0][0]      
+__________________________________________________________________________________________________
+conv2d_9 (Conv2D)               (None, 128, 60, 16)  147584      activation_7[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_8 (BatchNor (None, 128, 60, 16)  64          conv2d_9[0][0]                   
+__________________________________________________________________________________________________
+conv2d_10 (Conv2D)              (None, 128, 60, 16)  8320        activation_6[0][0]               
+__________________________________________________________________________________________________
+add_3 (Add)                     (None, 128, 60, 16)  0           batch_normalization_8[0][0]      
+                                                                 conv2d_10[0][0]                  
+__________________________________________________________________________________________________
+activation_8 (Activation)       (None, 128, 60, 16)  0           add_3[0][0]                      
+__________________________________________________________________________________________________
+conv2d_11 (Conv2D)              (None, 128, 60, 16)  147584      activation_8[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_9 (BatchNor (None, 128, 60, 16)  64          conv2d_11[0][0]                  
+__________________________________________________________________________________________________
+activation_9 (Activation)       (None, 128, 60, 16)  0           batch_normalization_9[0][0]      
+__________________________________________________________________________________________________
+conv2d_12 (Conv2D)              (None, 128, 60, 16)  147584      activation_9[0][0]               
+__________________________________________________________________________________________________
+batch_normalization_10 (BatchNo (None, 128, 60, 16)  64          conv2d_12[0][0]                  
+__________________________________________________________________________________________________
+add_4 (Add)                     (None, 128, 60, 16)  0           batch_normalization_10[0][0]     
+                                                                 activation_8[0][0]               
+__________________________________________________________________________________________________
+activation_10 (Activation)      (None, 128, 60, 16)  0           add_4[0][0]                      
+__________________________________________________________________________________________________
+conv2d_13 (Conv2D)              (None, 128, 60, 16)  147584      activation_10[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_11 (BatchNo (None, 128, 60, 16)  64          conv2d_13[0][0]                  
+__________________________________________________________________________________________________
+activation_11 (Activation)      (None, 128, 60, 16)  0           batch_normalization_11[0][0]     
+__________________________________________________________________________________________________
+conv2d_14 (Conv2D)              (None, 128, 60, 16)  147584      activation_11[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_12 (BatchNo (None, 128, 60, 16)  64          conv2d_14[0][0]                  
+__________________________________________________________________________________________________
+add_5 (Add)                     (None, 128, 60, 16)  0           batch_normalization_12[0][0]     
+                                                                 activation_10[0][0]              
+__________________________________________________________________________________________________
+activation_12 (Activation)      (None, 128, 60, 16)  0           add_5[0][0]                      
+__________________________________________________________________________________________________
+conv2d_15 (Conv2D)              (None, 256, 60, 16)  295168      activation_12[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_13 (BatchNo (None, 256, 60, 16)  64          conv2d_15[0][0]                  
+__________________________________________________________________________________________________
+activation_13 (Activation)      (None, 256, 60, 16)  0           batch_normalization_13[0][0]     
+__________________________________________________________________________________________________
+conv2d_16 (Conv2D)              (None, 256, 60, 16)  590080      activation_13[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_14 (BatchNo (None, 256, 60, 16)  64          conv2d_16[0][0]                  
+__________________________________________________________________________________________________
+conv2d_17 (Conv2D)              (None, 256, 60, 16)  33024       activation_12[0][0]              
+__________________________________________________________________________________________________
+add_6 (Add)                     (None, 256, 60, 16)  0           batch_normalization_14[0][0]     
+                                                                 conv2d_17[0][0]                  
+__________________________________________________________________________________________________
+activation_14 (Activation)      (None, 256, 60, 16)  0           add_6[0][0]                      
+__________________________________________________________________________________________________
+conv2d_18 (Conv2D)              (None, 256, 60, 16)  590080      activation_14[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_15 (BatchNo (None, 256, 60, 16)  64          conv2d_18[0][0]                  
+__________________________________________________________________________________________________
+activation_15 (Activation)      (None, 256, 60, 16)  0           batch_normalization_15[0][0]     
+__________________________________________________________________________________________________
+conv2d_19 (Conv2D)              (None, 256, 60, 16)  590080      activation_15[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_16 (BatchNo (None, 256, 60, 16)  64          conv2d_19[0][0]                  
+__________________________________________________________________________________________________
+add_7 (Add)                     (None, 256, 60, 16)  0           batch_normalization_16[0][0]     
+                                                                 activation_14[0][0]              
+__________________________________________________________________________________________________
+activation_16 (Activation)      (None, 256, 60, 16)  0           add_7[0][0]                      
+__________________________________________________________________________________________________
+conv2d_20 (Conv2D)              (None, 256, 60, 16)  590080      activation_16[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_17 (BatchNo (None, 256, 60, 16)  64          conv2d_20[0][0]                  
+__________________________________________________________________________________________________
+activation_17 (Activation)      (None, 256, 60, 16)  0           batch_normalization_17[0][0]     
+__________________________________________________________________________________________________
+conv2d_21 (Conv2D)              (None, 256, 60, 16)  590080      activation_17[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_18 (BatchNo (None, 256, 60, 16)  64          conv2d_21[0][0]                  
+__________________________________________________________________________________________________
+add_8 (Add)                     (None, 256, 60, 16)  0           batch_normalization_18[0][0]     
+                                                                 activation_16[0][0]              
+__________________________________________________________________________________________________
+activation_18 (Activation)      (None, 256, 60, 16)  0           add_8[0][0]                      
+__________________________________________________________________________________________________
+conv2d_22 (Conv2D)              (None, 512, 60, 16)  1180160     activation_18[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_19 (BatchNo (None, 512, 60, 16)  64          conv2d_22[0][0]                  
+__________________________________________________________________________________________________
+activation_19 (Activation)      (None, 512, 60, 16)  0           batch_normalization_19[0][0]     
+__________________________________________________________________________________________________
+conv2d_23 (Conv2D)              (None, 512, 60, 16)  2359808     activation_19[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_20 (BatchNo (None, 512, 60, 16)  64          conv2d_23[0][0]                  
+__________________________________________________________________________________________________
+conv2d_24 (Conv2D)              (None, 512, 60, 16)  131584      activation_18[0][0]              
+__________________________________________________________________________________________________
+add_9 (Add)                     (None, 512, 60, 16)  0           batch_normalization_20[0][0]     
+                                                                 conv2d_24[0][0]                  
+__________________________________________________________________________________________________
+activation_20 (Activation)      (None, 512, 60, 16)  0           add_9[0][0]                      
+__________________________________________________________________________________________________
+conv2d_25 (Conv2D)              (None, 512, 60, 16)  2359808     activation_20[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_21 (BatchNo (None, 512, 60, 16)  64          conv2d_25[0][0]                  
+__________________________________________________________________________________________________
+activation_21 (Activation)      (None, 512, 60, 16)  0           batch_normalization_21[0][0]     
+__________________________________________________________________________________________________
+conv2d_26 (Conv2D)              (None, 512, 60, 16)  2359808     activation_21[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_22 (BatchNo (None, 512, 60, 16)  64          conv2d_26[0][0]                  
+__________________________________________________________________________________________________
+add_10 (Add)                    (None, 512, 60, 16)  0           batch_normalization_22[0][0]     
+                                                                 activation_20[0][0]              
+__________________________________________________________________________________________________
+activation_22 (Activation)      (None, 512, 60, 16)  0           add_10[0][0]                     
+__________________________________________________________________________________________________
+conv2d_27 (Conv2D)              (None, 512, 60, 16)  2359808     activation_22[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_23 (BatchNo (None, 512, 60, 16)  64          conv2d_27[0][0]                  
+__________________________________________________________________________________________________
+activation_23 (Activation)      (None, 512, 60, 16)  0           batch_normalization_23[0][0]     
+__________________________________________________________________________________________________
+conv2d_28 (Conv2D)              (None, 512, 60, 16)  2359808     activation_23[0][0]              
+__________________________________________________________________________________________________
+batch_normalization_24 (BatchNo (None, 512, 60, 16)  64          conv2d_28[0][0]                  
+__________________________________________________________________________________________________
+add_11 (Add)                    (None, 512, 60, 16)  0           batch_normalization_24[0][0]     
+                                                                 activation_22[0][0]              
+__________________________________________________________________________________________________
+activation_24 (Activation)      (None, 512, 60, 16)  0           add_11[0][0]                     
+__________________________________________________________________________________________________
+dropout (Dropout)               (None, 512, 60, 16)  0           activation_24[0][0]              
+__________________________________________________________________________________________________
+dense (Dense)                   (None, 512, 60, 512) 8704        dropout[0][0]                    
+__________________________________________________________________________________________________
+dense_1 (Dense)                 (None, 512, 60, 12)  6156        dense[0][0]                      
+__________________________________________________________________________________________________
+permute (Permute)               (None, 60, 512, 12)  0           dense_1[0][0]                    
+__________________________________________________________________________________________________
+average_pooling2d (AveragePooli (None, 60, 128, 2)   0           permute[0][0]                    
+__________________________________________________________________________________________________
+reshape (Reshape)               (None, 60, 256)      0           average_pooling2d[0][0]          
+__________________________________________________________________________________________________
+bidirectional (Bidirectional)   (None, 60, 128)      296448      reshape[0][0]                    
+__________________________________________________________________________________________________
+bidirectional_1 (Bidirectional) (None, 60, 128)      198144      bidirectional[0][0]              
+__________________________________________________________________________________________________
+time_distributed (TimeDistribut (None, 60, 128)      16512       bidirectional_1[0][0]            
+__________________________________________________________________________________________________
+dropout_1 (Dropout)             (None, 60, 128)      0           time_distributed[0][0]           
+__________________________________________________________________________________________________
+time_distributed_1 (TimeDistrib (None, 60, 36)       4644        dropout_1[0][0]                  
+__________________________________________________________________________________________________
+doa_out (Activation)            (None, 60, 36)       0           time_distributed_1[0][0]         
+==================================================================================================
+Total params: 17,999,024
+Trainable params: 17,998,128
+Non-trainable params: 896
+__________________________________________________________________________________________________
+Dumping recording-wise val results in: results\2_mic_dev_val
+Split: desktop.ini
+Split: dev-test
+Split: dev-train
+Split: dev-val
+SELD metrics class: loaded : 600 reference files
+Epoch 1/5
+373/373 - 379s - loss: 0.0380
+Epoch 2/5
+373/373 - 370s - loss: 0.0381
+Epoch 3/5
+373/373 - 366s - loss: 0.0381
+Epoch 4/5
+373/373 - 380s - loss: 0.0380
+Epoch 5/5
+373/373 - 381s - loss: 0.0380
+151/151 - 27s
+epoch_cnt: 0, time: 7340.97s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 372s - loss: 0.0380
+Epoch 2/5
+373/373 - 375s - loss: 0.0380
+Epoch 3/5
+373/373 - 376s - loss: 0.0380
+Epoch 4/5
+373/373 - 368s - loss: 0.0380
+Epoch 5/5
+373/373 - 366s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 1, time: 1888.18s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 369s - loss: 0.0380
+Epoch 2/5
+373/373 - 371s - loss: 0.0380
+Epoch 3/5
+373/373 - 377s - loss: 0.0380
+Epoch 4/5
+373/373 - 371s - loss: 0.0380
+Epoch 5/5
+373/373 - 370s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 2, time: 1890.05s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 376s - loss: 0.0380
+Epoch 2/5
+373/373 - 371s - loss: 0.0380
+Epoch 3/5
+373/373 - 369s - loss: 0.0380
+Epoch 4/5
+373/373 - 366s - loss: 0.0380
+Epoch 5/5
+373/373 - 366s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 3, time: 2323.25s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 381s - loss: 0.0380
+Epoch 2/5
+373/373 - 379s - loss: 0.0380
+Epoch 3/5
+373/373 - 375s - loss: 0.0380
+Epoch 4/5
+373/373 - 382s - loss: 0.0380
+Epoch 5/5
+373/373 - 370s - loss: 0.0380
+151/151 - 26s
+epoch_cnt: 4, time: 1918.80s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 368s - loss: 0.0380
+Epoch 2/5
+373/373 - 367s - loss: 0.0380
+Epoch 3/5
+373/373 - 364s - loss: 0.0380
+Epoch 4/5
+373/373 - 365s - loss: 0.0380
+Epoch 5/5
+373/373 - 367s - loss: 0.0380
+151/151 - 26s
+epoch_cnt: 5, time: 1863.67s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 366s - loss: 0.0380
+Epoch 2/5
+373/373 - 366s - loss: 0.0380
+Epoch 3/5
+373/373 - 370s - loss: 0.0380
+Epoch 4/5
+373/373 - 369s - loss: 0.0380
+Epoch 5/5
+373/373 - 369s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 6, time: 1868.31s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 366s - loss: 0.0380
+Epoch 2/5
+373/373 - 367s - loss: 0.0380
+Epoch 3/5
+373/373 - 365s - loss: 0.0380
+Epoch 4/5
+373/373 - 364s - loss: 0.0380
+Epoch 5/5
+373/373 - 367s - loss: 0.0380
+151/151 - 24s
+epoch_cnt: 7, time: 1854.77s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 367s - loss: 0.0380
+Epoch 2/5
+373/373 - 369s - loss: 0.0380
+Epoch 3/5
+373/373 - 365s - loss: 0.0380
+Epoch 4/5
+373/373 - 368s - loss: 0.0380
+Epoch 5/5
+373/373 - 367s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 8, time: 1862.15s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 364s - loss: 0.0380
+Epoch 2/5
+373/373 - 365s - loss: 0.0380
+Epoch 3/5
+373/373 - 365s - loss: 0.0380
+Epoch 4/5
+373/373 - 365s - loss: 0.0380
+Epoch 5/5
+373/373 - 367s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 9, time: 1853.46s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 368s - loss: 0.0380
+Epoch 2/5
+373/373 - 369s - loss: 0.0380
+Epoch 3/5
+373/373 - 367s - loss: 0.0380
+Epoch 4/5
+373/373 - 365s - loss: 0.0380
+Epoch 5/5
+373/373 - 367s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 10, time: 1862.51s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 367s - loss: 0.0380
+Epoch 2/5
+373/373 - 367s - loss: 0.0380
+Epoch 3/5
+373/373 - 367s - loss: 0.0380
+Epoch 4/5
+373/373 - 366s - loss: 0.0380
+Epoch 5/5
+373/373 - 367s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 11, time: 1860.94s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 365s - loss: 0.0380
+Epoch 2/5
+373/373 - 366s - loss: 0.0380
+Epoch 3/5
+373/373 - 368s - loss: 0.0380
+Epoch 4/5
+373/373 - 365s - loss: 0.0380
+Epoch 5/5
+373/373 - 367s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 12, time: 1856.72s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 367s - loss: 0.0380
+Epoch 2/5
+373/373 - 365s - loss: 0.0380
+Epoch 3/5
+373/373 - 365s - loss: 0.0380
+Epoch 4/5
+373/373 - 368s - loss: 0.0380
+Epoch 5/5
+373/373 - 368s - loss: 0.0380
+151/151 - 25s
+epoch_cnt: 13, time: 1858.64s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 368s - loss: 0.0380
+Epoch 2/5
+373/373 - 366s - loss: 0.0379
+Epoch 3/5
+373/373 - 366s - loss: 0.0376
+Epoch 4/5
+373/373 - 368s - loss: 0.0375
+Epoch 5/5
+373/373 - 369s - loss: 0.0374
+151/151 - 26s
+epoch_cnt: 14, time: 1862.52s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 367s - loss: 0.0374
+Epoch 2/5
+373/373 - 368s - loss: 0.0373
+Epoch 3/5
+373/373 - 368s - loss: 0.0373
+Epoch 4/5
+373/373 - 367s - loss: 0.0372
+Epoch 5/5
+373/373 - 367s - loss: 0.0372
+151/151 - 25s
+epoch_cnt: 15, time: 1862.75s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 1.00, F: 0.0, LE: 180.0, LR:0.0, seld_score (early stopping score): 1.00, best_seld_score: 1.00, best_epoch : 0
+
+Epoch 1/5
+373/373 - 367s - loss: 0.0371
+Epoch 2/5
+373/373 - 368s - loss: 0.0370
+Epoch 3/5
+373/373 - 370s - loss: 0.0368
+Epoch 4/5
+373/373 - 368s - loss: 0.0366
+Epoch 5/5
+373/373 - 367s - loss: 0.0366
+151/151 - 25s
+epoch_cnt: 16, time: 1868.24s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 0.99, F: 0.6, LE: 38.2, LR:1.4, seld_score (early stopping score): 0.80, best_seld_score: 0.80, best_epoch : 16
+
+Epoch 1/5
+373/373 - 366s - loss: 0.0364
+Epoch 2/5
+373/373 - 367s - loss: 0.0363
+Epoch 3/5
+373/373 - 366s - loss: 0.0362
+Epoch 4/5
+373/373 - 367s - loss: 0.0360
+Epoch 5/5
+373/373 - 367s - loss: 0.0359
+151/151 - 25s
+epoch_cnt: 17, time: 1859.82s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 0.99, F: 0.6, LE: 37.3, LR:1.1, seld_score (early stopping score): 0.80, best_seld_score: 0.80, best_epoch : 16
+
+Epoch 1/5
+373/373 - 370s - loss: 0.0357
+Epoch 2/5
+373/373 - 368s - loss: 0.0356
+Epoch 3/5
+373/373 - 368s - loss: 0.0355
+Epoch 4/5
+373/373 - 369s - loss: 0.0353
+Epoch 5/5
+373/373 - 365s - loss: 0.0352
+151/151 - 24s
+epoch_cnt: 18, time: 1867.07s, tr_loss: 0.04, 
+		 DCASE2021 SCORES: ER: 0.97, F: 1.7, LE: 40.3, LR:4.1, seld_score (early stopping score): 0.78, best_seld_score: 0.78, best_epoch : 18
+
+Epoch 1/5
+373/373 - 366s - loss: 0.0351
+Epoch 2/5
+373/373 - 369s - loss: 0.0350
+Epoch 3/5
+373/373 - 368s - loss: 0.0348
+Epoch 4/5
+373/373 - 368s - loss: 0.0347
+Epoch 5/5
+373/373 - 372s - loss: 0.0344
+151/151 - 25s
+epoch_cnt: 19, time: 1869.24s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 0.99, F: 0.9, LE: 44.9, LR:1.9, seld_score (early stopping score): 0.80, best_seld_score: 0.78, best_epoch : 18
+
+Epoch 1/5
+373/373 - 372s - loss: 0.0344
+Epoch 2/5
+373/373 - 373s - loss: 0.0341
+Epoch 3/5
+373/373 - 370s - loss: 0.0339
+Epoch 4/5
+373/373 - 370s - loss: 0.0337
+Epoch 5/5
+373/373 - 371s - loss: 0.0333
+151/151 - 24s
+epoch_cnt: 20, time: 1884.33s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 0.98, F: 1.7, LE: 35.9, LR:2.9, seld_score (early stopping score): 0.78, best_seld_score: 0.78, best_epoch : 20
+
+Epoch 1/5
+373/373 - 372s - loss: 0.0330
+Epoch 2/5
+373/373 - 371s - loss: 0.0326
+Epoch 3/5
+373/373 - 370s - loss: 0.0322
+Epoch 4/5
+373/373 - 372s - loss: 0.0319
+Epoch 5/5
+373/373 - 370s - loss: 0.0315
+151/151 - 25s
+epoch_cnt: 21, time: 1882.89s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 0.96, F: 3.0, LE: 49.2, LR:5.8, seld_score (early stopping score): 0.79, best_seld_score: 0.78, best_epoch : 20
+
+Epoch 1/5
+373/373 - 370s - loss: 0.0310
+Epoch 2/5
+373/373 - 369s - loss: 0.0305
+Epoch 3/5
+373/373 - 370s - loss: 0.0304
+Epoch 4/5
+373/373 - 370s - loss: 0.0297
+Epoch 5/5
+373/373 - 372s - loss: 0.0292
+151/151 - 25s
+epoch_cnt: 22, time: 1884.54s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 0.95, F: 3.2, LE: 49.6, LR:7.2, seld_score (early stopping score): 0.78, best_seld_score: 0.78, best_epoch : 22
+
+Epoch 1/5
+373/373 - 371s - loss: 0.0288
+Epoch 2/5
+373/373 - 366s - loss: 0.0282
+Epoch 3/5
+373/373 - 370s - loss: 0.0280
+Epoch 4/5
+373/373 - 370s - loss: 0.0275
+Epoch 5/5
+373/373 - 371s - loss: 0.0271
+151/151 - 25s
+epoch_cnt: 23, time: 1876.30s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 0.94, F: 4.1, LE: 47.2, LR:8.0, seld_score (early stopping score): 0.77, best_seld_score: 0.77, best_epoch : 23
+
+Epoch 1/5
+373/373 - 369s - loss: 0.0267
+Epoch 2/5
+373/373 - 371s - loss: 0.0263
+Epoch 3/5
+373/373 - 372s - loss: 0.0258
+Epoch 4/5
+373/373 - 368s - loss: 0.0255
+Epoch 5/5
+373/373 - 371s - loss: 0.0252
+151/151 - 25s
+epoch_cnt: 24, time: 1879.97s, tr_loss: 0.03, 
+		 DCASE2021 SCORES: ER: 0.92, F: 5.1, LE: 49.7, LR:11.3, seld_score (early stopping score): 0.76, best_seld_score: 0.76, best_epoch : 24
+
+Epoch 1/5
+373/373 - 371s - loss: 0.0248
+Epoch 2/5
+373/373 - 369s - loss: 0.0245
+Epoch 3/5
+373/373 - 369s - loss: 0.0242
+Epoch 4/5
+373/373 - 370s - loss: 0.0240
+Epoch 5/5
+373/373 - 369s - loss: 0.0236
+151/151 - 25s
+epoch_cnt: 25, time: 1878.39s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.93, F: 4.9, LE: 50.6, LR:10.9, seld_score (early stopping score): 0.76, best_seld_score: 0.76, best_epoch : 24
+
+Epoch 1/5
+373/373 - 372s - loss: 0.0233
+Epoch 2/5
+373/373 - 371s - loss: 0.0229
+Epoch 3/5
+373/373 - 372s - loss: 0.0230
+Epoch 4/5
+373/373 - 372s - loss: 0.0223
+Epoch 5/5
+373/373 - 371s - loss: 0.0223
+151/151 - 25s
+epoch_cnt: 26, time: 1897.30s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.91, F: 6.0, LE: 52.2, LR:14.8, seld_score (early stopping score): 0.75, best_seld_score: 0.75, best_epoch : 26
+
+Epoch 1/5
+373/373 - 371s - loss: 0.0220
+Epoch 2/5
+373/373 - 371s - loss: 0.0218
+Epoch 3/5
+373/373 - 368s - loss: 0.0214
+Epoch 4/5
+373/373 - 371s - loss: 0.0212
+Epoch 5/5
+373/373 - 369s - loss: 0.0210
+151/151 - 25s
+epoch_cnt: 27, time: 1881.99s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.91, F: 5.8, LE: 51.7, LR:13.7, seld_score (early stopping score): 0.75, best_seld_score: 0.75, best_epoch : 26
+
+Epoch 1/5
+373/373 - 371s - loss: 0.0209
+Epoch 2/5
+373/373 - 371s - loss: 0.0206
+Epoch 3/5
+373/373 - 370s - loss: 0.0205
+Epoch 4/5
+373/373 - 371s - loss: 0.0201
+Epoch 5/5
+373/373 - 371s - loss: 0.0200
+151/151 - 24s
+epoch_cnt: 28, time: 1882.11s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.91, F: 5.7, LE: 52.2, LR:14.7, seld_score (early stopping score): 0.75, best_seld_score: 0.75, best_epoch : 26
+
+Epoch 1/5
+373/373 - 371s - loss: 0.0198
+Epoch 2/5
+373/373 - 373s - loss: 0.0198
+Epoch 3/5
+373/373 - 371s - loss: 0.0195
+Epoch 4/5
+373/373 - 370s - loss: 0.0195
+Epoch 5/5
+373/373 - 372s - loss: 0.0192
+151/151 - 28s
+epoch_cnt: 29, time: 1887.21s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.91, F: 6.6, LE: 52.2, LR:14.2, seld_score (early stopping score): 0.75, best_seld_score: 0.75, best_epoch : 29
+
+Epoch 1/5
+373/373 - 372s - loss: 0.0189
+Epoch 2/5
+373/373 - 371s - loss: 0.0190
+Epoch 3/5
+373/373 - 371s - loss: 0.0190
+Epoch 4/5
+373/373 - 369s - loss: 0.0186
+Epoch 5/5
+373/373 - 373s - loss: 0.0184
+151/151 - 25s
+epoch_cnt: 30, time: 1884.63s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.89, F: 6.9, LE: 51.9, LR:16.3, seld_score (early stopping score): 0.74, best_seld_score: 0.74, best_epoch : 30
+
+Epoch 1/5
+373/373 - 372s - loss: 0.0184
+Epoch 2/5
+373/373 - 369s - loss: 0.0183
+Epoch 3/5
+373/373 - 372s - loss: 0.0181
+Epoch 4/5
+373/373 - 373s - loss: 0.0180
+Epoch 5/5
+373/373 - 371s - loss: 0.0179
+151/151 - 25s
+epoch_cnt: 31, time: 1887.24s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.90, F: 6.5, LE: 52.5, LR:15.4, seld_score (early stopping score): 0.74, best_seld_score: 0.74, best_epoch : 30
+
+Epoch 1/5
+373/373 - 371s - loss: 0.0178
+Epoch 2/5
+373/373 - 369s - loss: 0.0176
+Epoch 3/5
+373/373 - 371s - loss: 0.0175
+Epoch 4/5
+373/373 - 371s - loss: 0.0175
+Epoch 5/5
+373/373 - 370s - loss: 0.0172
+151/151 - 25s
+epoch_cnt: 32, time: 1880.29s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.89, F: 7.0, LE: 52.4, LR:17.5, seld_score (early stopping score): 0.73, best_seld_score: 0.73, best_epoch : 32
+
+Epoch 1/5
+373/373 - 372s - loss: 0.0173
+Epoch 2/5
+373/373 - 372s - loss: 0.0170
+Epoch 3/5
+373/373 - 370s - loss: 0.0169
+Epoch 4/5
+373/373 - 378s - loss: 0.0170
+Epoch 5/5
+373/373 - 372s - loss: 0.0168
+151/151 - 24s
+epoch_cnt: 33, time: 1892.32s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.89, F: 7.0, LE: 50.5, LR:16.6, seld_score (early stopping score): 0.73, best_seld_score: 0.73, best_epoch : 33
+
+Epoch 1/5
+373/373 - 381s - loss: 0.0167
+Epoch 2/5
+373/373 - 374s - loss: 0.0166
+Epoch 3/5
+373/373 - 382s - loss: 0.0166
+Epoch 4/5
+373/373 - 382s - loss: 0.0164
+Epoch 5/5
+373/373 - 379s - loss: 0.0162
+151/151 - 24s
+epoch_cnt: 34, time: 1936.62s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.89, F: 6.6, LE: 55.1, LR:16.7, seld_score (early stopping score): 0.74, best_seld_score: 0.73, best_epoch : 33
+
+Epoch 1/5
+373/373 - 384s - loss: 0.0164
+Epoch 2/5
+373/373 - 391s - loss: 0.0160
+Epoch 3/5
+373/373 - 386s - loss: 0.0160
+Epoch 4/5
+373/373 - 387s - loss: 0.0160
+Epoch 5/5
+373/373 - 385s - loss: 0.0159
+151/151 - 23s
+epoch_cnt: 35, time: 1966.41s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.89, F: 6.7, LE: 53.4, LR:16.7, seld_score (early stopping score): 0.74, best_seld_score: 0.73, best_epoch : 33
+
+Epoch 1/5
+373/373 - 385s - loss: 0.0158
+Epoch 2/5
+373/373 - 382s - loss: 0.0158
+Epoch 3/5
+373/373 - 384s - loss: 0.0157
+Epoch 4/5
+373/373 - 386s - loss: 0.0156
+Epoch 5/5
+373/373 - 390s - loss: 0.0154
+151/151 - 22s
+epoch_cnt: 36, time: 1955.00s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.88, F: 7.0, LE: 55.8, LR:18.7, seld_score (early stopping score): 0.73, best_seld_score: 0.73, best_epoch : 33
+
+Epoch 1/5
+373/373 - 387s - loss: 0.0155
+Epoch 2/5
+373/373 - 386s - loss: 0.0156
+Epoch 3/5
+373/373 - 387s - loss: 0.0153
+Epoch 4/5
+373/373 - 388s - loss: 0.0152
+Epoch 5/5
+373/373 - 388s - loss: 0.0153
+151/151 - 22s
+epoch_cnt: 37, time: 1962.06s, tr_loss: 0.02, 
+		 DCASE2021 SCORES: ER: 0.89, F: 6.6, LE: 54.2, LR:17.9, seld_score (early stopping score): 0.74, best_seld_score: 0.73, best_epoch : 33
+
+Epoch 1/5
+373/373 - 388s - loss: 0.0151
+Epoch 2/5
+373/373 - 391s - loss: 0.0151
+Epoch 3/5
+373/373 - 387s - loss: 0.0151
+Epoch 4/5
+373/373 - 389s - loss: 0.0149
+Epoch 5/5
+373/373 - 390s - loss: 0.0149
+151/151 - 22s
+epoch_cnt: 38, time: 1971.08s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 0.88, F: 6.7, LE: 54.5, LR:18.2, seld_score (early stopping score): 0.73, best_seld_score: 0.73, best_epoch : 33
+
+Epoch 1/5
+373/373 - 391s - loss: 0.0146
+Epoch 2/5
+373/373 - 385s - loss: 0.0149
+Epoch 3/5
+373/373 - 385s - loss: 0.0147
+Epoch 4/5
+373/373 - 385s - loss: 0.0146
+Epoch 5/5
+373/373 - 384s - loss: 0.0146
+151/151 - 23s
+epoch_cnt: 39, time: 1956.07s, tr_loss: 0.01, 
+		 DCASE2021 SCORES: ER: 0.89, F: 6.9, LE: 52.5, LR:17.4, seld_score (early stopping score): 0.73, best_seld_score: 0.73, best_epoch : 39
+
+
+Results on validation split:
+	Unique_name: models\2_resnet18_da2_bs16_dev_mic_dev_split6 
+	Saved model for the best_epoch: 39
+	SELD_score (early stopping score) : 0.7335426838132331
+
+	DCASE2021 scores
+	Class-aware localization scores: Localization Error: 52.5, Localization Recall: 17.4
+	Location-aware detection scores: Error rate: 0.89, F-score: 6.9
+
+Loading the best model and predicting results on the testing split
+	Loading testing dataset:
+	Datagen_mode: dev, nb_files: 144, nb_classes:12
+	nb_frames_file: 3000, feat_len: 64, nb_ch: 10, label_len:48
+
+	Dataset: mic, split: 6
+	batch_size: 10, feat_seq_len: 300, label_seq_len: 60, shuffle: False
+	Total batches in dataset: 144
+	label_dir: seld_feat_label\mic_dev_label
+ 	feat_dir: seld_feat_label\mic_dev_norm
+
+144/144 - 24s
+Dumping recording-wise test results in: results\2_mic_dev_test
+Results on test split:
+	DCASE2021 Scores
+	Class-aware localization scores: Localization Error: 48.7, Localization Recall: 21.4
+	Location-aware detection scores: Error rate: 0.86, F-score: 8.2
+	SELD (early stopping metric): 0.71
