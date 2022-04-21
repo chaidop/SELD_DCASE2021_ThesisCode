@@ -105,7 +105,7 @@ def main(argv):
         # Load train and validation data
         print('Loading training dataset:')
         data_gen_train = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt]
+            params=params, split=train_splits[split_cnt], train=True
         )
 
         print('Loading validation dataset:')
