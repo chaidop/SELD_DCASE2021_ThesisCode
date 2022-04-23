@@ -208,7 +208,13 @@ class FeatureClass:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
                     ##### CUSTOM data augmentation that does not change label, only in train dataset
                     if not self._is_eval and self._data_augm is not 0:
-                        feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                        if self._data_augm == 1:
+                            feat = np.reshape(feat, (1, feat.shape[0], feat.shape[1]))
+                            feat_augm, was_augmented = SpecAugmentNp()(feat)
+                            feat_augm = np.reshape(feat_augm, ( feat_augm.shape[1], feat_augm.shape[2]))
+                            feat = np.reshape(feat, (feat.shape[1], feat.shape[2]))
+                        elif self._data_augm == 2:
+                            feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
                         if was_augmented:
                             #have a list of the names of files that were augmented, to copy the labels on that index
                             self.augm_indx = np.append(self.augm_indx, file_name)
@@ -284,11 +290,12 @@ class FeatureClass:
                     np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
                     #CUSTOM save twice if the file is augmented
                     ##in ubuntu files not saved alphabeticaly, so need to run whole list to check for current file
-                    print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
-                    for i in range(len(self.augm_indx)):
-                        if self.augm_indx[i] == wav_filename :
-                            np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
-                            break
+                    if self._data_augm is not 0 and self._is_eval==False:
+                        print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
+                        for i in range(len(self.augm_indx)):
+                            if self.augm_indx[i] == wav_filename :
+                                np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
+                                break
 
     # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
     def load_output_format_file(self, _output_format_file):
