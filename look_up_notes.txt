@@ -1,0 +1,44 @@
+READ.me::
+ACCDOA format, which encodes both SED and DOA information in one single output
+
+the baseline method takes a sequence of consecutive feature-frames and predicts all the active sound event classes for each of the input frame 
+along with their respective spatial location, producing the temporal activity and DOA trajectory for each sound event class.
+
+
+
+
+
+#####################
+
+
+
+model.fit_generator (seld.py)->>trains the model, is the one that prints Epoch ?/5
+
+feat is data_in and labels is data_out(what we try to predict):
+feat_shape = (self._batch_size, self._nb_ch, self._feature_seq_len, self._nb_mel_bins)
+label_shape = (self._batch_size, self._label_seq_len, self._nb_classes*3)
+
+
+#####
+
+accdoa->[None, 60, 36] opou kathe 12 apo ta 36 channels einai gia tis metavlites x, y, z
+me tis metavlites avtes vrisketai kai to prediction gia to sed afou vgei gia to doa(i think)
+kai isxyei an einai panw apo ena threshold 0.5
+
+In SALSA, Nguyen uses below shapes:
+data_in:(n_channels, n_timesteps, n_mels)
+sed_labels:(n_timesteps, n_classes)
+doa_labels:(n_timesteps, x*n_classes), x = 3
+Same as baselines
+
+The input dataset for both formats (FOA or MIC) contain 600 60-second, four-channels audio clips
+These 600 audio clips where split into 6 splits (fold_1_....wav, fold_2_....wav etc)
+
+Labels are the input_data/metadata folder and are saved after extraction in seld_feat_label/mic_dev_label
+
+
+##############
+
+Conformer Shape:
+(B, C, T, F)->(None, 256, 60, 2)
+might need to reshape to (None, 60, 512)

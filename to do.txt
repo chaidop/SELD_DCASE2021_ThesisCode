@@ -1,7 +1,7 @@
 batches*(10x300x64) is (MIC channels, sequence length (number of STFT frames), mel-bands)
 
 n_features = n_channels
-
+freq = n_mel_bins
 
 
 TO DOO:::
@@ -161,6 +161,8 @@ DATA AUGM:https://github.com/thomeou/SALSA/blob/90562a236117f4810a4a821b6ae165d1
 	Data in (128 (batch_size), 10 (nb_channels), 300 (seq_len), 64 (feat_len))
 
 d_model: number of feature maps
+nomizww d_model = channels*features = 256*2 = 512
+nomiza arxika oti d_model = num_heads*depth alla de kserw to eida se ena github kai avto...
 
 SCALED ATTENTION CHECK DIMENSIONS 
 
@@ -333,3 +335,232 @@ what is a generator (needed in fit_generator to train model):https://stackoverfl
 FOR DATA AUGM::
 https://github.com/TensorSpeech/TensorFlowASR/tree/caee2e79d0eb9d1a997f5df8e2ba3ee7f0a1bcae/tensorflow_asr/augmentations
 https://github.com/thomeou/SALSA/blob/master/utilities/transforms.py
+https://github.com/IRIS-AUDIO/SELD/blob/669ead73ce1e0db7bafef96d9f4037f9cf2cd0b7/transforms.py
+
+parameter sharing: see Lees report, and https://arxiv.org/pdf/2010.13092.pdf
+
+on doa ksexwrismo(from https://github.com/yinkalario/Two-Stage-Polyphonic-Sound-Event-Detection-and-Localization/blob/master/models/CRNNs.py)::
+(x, _) = self.gru(x)
+event_output = torch.sigmoid(self.event_fc(x))
+azimuth_output = self.azimuth_fc(x)
+elevation_output = self.elevation_fc(x) 
+
+
+https://arxiv.org/abs/1904.08779::
+SpecAugment is actually 3 different augmentation techniques of the log mel spectrogram: time warping, frequency masking and time masking
+
+
+TODO:: --Implement masking data augmentation	
+		-Debug conformer (change tf.matmul)
+		-Fix gpu version compatibility to finally run gpu
+		
+Probably will need to make the data augmentations in the cls_feature_class file after all
+and run batch_feature_extraction.py everytime
+
+FOR THE REPORT::: Resnet18 results, data augmentation idea and conformer idea
+
+did RandomShiftUpDown and run batch_feature_extraction.py
+It takes 3d array while cls_feature_class takes 2d-> need to add reshape-->>DONE
+also check how to return a flag after randomshift to know if it has been augmented->>DONE
+
+check feature and label relationship->how data augm afFects it
+
+26/3/2022
+
+TODO:::-GPU	
+		-Conformer debug
+		-data augm debug
+		-check baaseline with not an accdoa output->ACTUALLY DONT, its already in the paper "A DATASET OF DYNAMIC REVERBERANT SOUND SCENES WITH DIRECTIONAL
+INTERFERERS FOR SOUND EVENT LOCALIZATION AND DETECTION"
+		
+in cls_generate_data printed in generate() the length of feat and label:10 2
+and in seld.py after prediction, pred length is 2 (as expected like the label)
+
+spectrogram shape: [_max_feat_frames, nb_mel_bins, nb_channels], each channel is an stft
+
+shape needed for augmentation techniques (by Ngyuen): [channels, time_steps, features]
+by Ko: (batch, time, freq, chan)->> same as data_in (256, 300, 64(mel_bins or frequency), 10(channels)) (i believe)
+
+Nguyen used 32 batch size->she had same problem as me, OEM
+
+cls_data_generator(generates data format for training) or cls_feature_class(when features are exrtracted and normalized)?? where should data augm take place?
+i decide to do it in cls_feature_class , saving the augmented audio files in the seld_feat_label folder locally
+Later when dataGenerator is called, it reads from the folder and takes the extra files into account
+
+!!!I could do it in cls_data_generator to not save them in folder and rather save them in variables->similar to Nguyen
+
+From Ko's report: only apply frequency masking, cause time masking requires determining start and end of a sound event->difficult
+Simply scaling models
+leads to improvement only on train dataset, and not on validation
+nor test datasets.
+
+where in the pipeline should data augmentation be used:https://nanonets.com/blog/data-augmentation-how-to-use-deep-learning-when-you-have-limited-data-part-2/
+basically, offline and online data augmentation
+Ko and Nguyen use online (i believe)
+Nguyen pipeline: database>dataloader>datamodule
+
+For the SELD task, some augmentation operations modify the input
+data as well as the SED or DOA labels
+
+CONCERNS:-data augmentations that have effect on labels as well
+		-online or offline data augmentation
+		
+there is a limited set of augmentation methods that can be reliably
+applied to our system to ensure the DOA estimation will not be negatively impacted. (Huangs report)
+8 transformations for MIC and 16 for FOA to keep the spatial info unchanged		
+
+Huang:
+For the data augmentation, all of the data augmentation tricks are applied ONLINE, which means the system randomly
+chose some hyper-parameters and then apply augmentation before
+the data is fed into the network. This operation will efficiently reduce the memory usage
+
+MAYBE DO ONLINE DATA AUGMENTATION AFTER ALL-> check cls_data_generator in generate()
+
+27/3/2022
+
+offline daata augm:
+https://arxiv.org/pdf/2010.06422.pdf
+
+
+https://ieeexplore.ieee.org/document/7472671
+
+!!!!!!!!(from Nguyen) We train the majority of these
+models using the SEDXYZ output format and some models with the
+ACCDOA output format. Since these two output formats are both
+class-wise format, they can be easily aggregated into ensembles
+using mean operation. The disadvantage of the class-wise output
+format is that they cannot resolve overlapping same-class events,
+which accounts for 10.45 % of the total frames in the DCASE 2021
+SELD dataset. We chose to use class-wise outputs for the ease
+of ensemble.
+
+TODO:::: Look into different output formats
+		-gpu
+		-conformer
+		-data augm
+		-Gaussian Mixture Model: Ko has it in his github look into it, and https://www.e-ce.uth.gr/wp-content/uploads/formidable/59/Athanasiou_Ioannis.pdf, https://arxiv.org/pdf/2101.02919.pdf
+		also from sklearn.mixture import GaussianMixture
+		-Ensembling
+		-parameter sharing (like Lee's report)(if i have time)
+		
+DOING::: offline data augm, later try online for masking, shifting and magnitude change.
+		 also debug conformer 
+		 
+in data_generator, features have shape(when running batch_normalization): [3000, 640] = [seq_len(?), nb_channels(10)*nb_mel_bins(64)]
+1: fold6_room1_mix002.wav, (3000, 640)
+
+DONE: offline data augmentation
+UP NEXT: conformer debugging and online data augmentation(done but not tested)
+
+28/3/2022
+
+Zhang report: masks are generated in each batch, and no new labels will be added
+Huang report:Due to the convolution layers have the property to capture the fine-grained
+local features while the transformer is capable of learning long sequence dependencies, Conformer was considered powerful
+enough to extract both local and global features of audios. In our experiment, we used 2 Conformer blocks after feature embedding
+
+31/3/2022
+
+Kos	data_loader: 
+# shape of x: [batch, label_window_size*5, freq, chan]
+# shape of y: [batch, label_window_size, n_classes*4]
+
+Kos modules test on conformer_encoder_block:
+input_shape = 32, 100, 64 # batch, time, feat
+output_shape = 32, 100, 64 # batch, time, feat
+
+Zhang (from which i try to copy) says for conformer:
+The output activation from CNN is further reshaped to a 60
+frame sequence of length 512 feature vectors and fed to Conformer
+block,
+
+feat, time, freq 
+
+1/4/2022
+
+might need to reshape spec_cnn from (256, 60, 2)->(60,512) in the conformer input
+since i think that it needs shape (B, T, dim(=C*F)) (look at sooftware github, input for conformer is (B, T, dim))
+
+Kos implementation use tf.Conv1D while i use keras.Conv1D
+the difference is that in tf.Conv1D it reshapes the last dimension so (B, C, dim) -> (B, C, 2*dim)
+while keras reshapes the first like: (B, C, dim )->(B, 2*C, dim)
+thats why in the split for GLU, i got dimension error cause Ko was spliting the last augmented dimension
+while mine was the first that was augmented
+-->>so ill need to change the axis split from -1 to 1 to split according to the 1st dimension
+look at sooftware, who is using nn.Conv1D which also augments the 1st dimension->he uses glu on axis=1
+
+
+conformer debuged!! batch size = 8 on quick dev run
+
+trying to run it on gpu gives GMEM Blass error->>>cudnn and cuda compatibility issues
+so i try and update tensorflow 2.4.0 and get rid of Tensorlike error (see notes 24/3/2022)
+updated keras 2.4.0
+
+i can either have tensorflow 2.4.0 with cuda 11.0 and cudnn 8.0->>need to donwload cudnn 8.0
+
+windows requires for tensorflow-gpu to also be installed after 2.x version of tensorflow exists
+
+changed all keras. to tensorflow.keras in keras_models.py and models.py
+also all conv2d in convolutionmodule to conv1d and axis=-1 again
+and used LayerNormalization from tensorflow layers
+because of this, i needed to add a tf.transpose layer (in keras_models.py before the forst conv layer in conv subsampling)
+cause tensorflow operates on the last dimensions while keras on the first
+
+tf.config.run_functions_eagerly(True)->not doin anything
+downgraded tensorflow, tensorflow-gpu to 2.0.0 :(
+TO DO:::Fix the damn gpu problem!!!!!!!!
+
+3/4/2022
+
+
+i have changed keras.backend.set_image_data_format('channels_last') form 'channel_first'
+
+error in line 185 in seld.py->model.save(model_name):::	raise NotImplementedError('Layers with arguments in `__init__` must '
+NotImplementedError: Layers with arguments in `__init__` must override `get_config`.
+
+->>>to do: read Kos github and the below site to understand how to save and train in tensorflow:
+https://www.tensorflow.org/guide/keras/save_and_serialize
+
+progress bar (seen in Ko):from tqdm import tqdm
+
+ON THE ABOVE ERROR: i overrided the get_config in my models.py->class Conformer 
+
+new error: 
+
+4/4/2022
+
+made a copy of current files that should work only with tf named model_tf200.py and keras_models_tf200.py
+
+gpu low usage->>>>>>
+
+install nvidia drivers again
+run in ubuntu and if all fails try pytorch...or im killing myself
+
+thema diplwmatikhs: pws h neural network proseggisi einai kalyterh apo sound 
+
+CHANGED CUDA+PATH variable from 11.0 to 11.5 and on the Path to be on top
+
+5/4/2022
+
+TODO::: try ubuntu with gpu
+ DID IT run quick test on cpu only 
+ 
+TODO:::: see the difference in models.py in ubuntu and windows 
+make a final program, also check the dimension problem, i think instead of (None, 256, 60, 2) it should be (None, 60, 512)((B, S, d_model))
+
+
+7/4/2022
+failed call to cuInit: CUDA_ERROR_NO_DEVICE: no CUDA-capable device is detected
+cuda 11.5 to 11.0 from environmental variables
+
+11/4/2022
+
+cuda 10.0 and cudnn 7.6.5 to combat the gem blass issue(loook in issues.txt)
+so i replaceed cuda 11.0 with this
+
+14/4/2022
+
+run resenet32 on ubuntu (pseudoresnet) auugmentation == 2 and trying to run same on resnet18
+
+ResNet18 params when i run it no augmentation and 40 epochs(on vienna) = 4,788,016
+PseudoResNet18 with augmentation == 1.5 million
