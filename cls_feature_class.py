@@ -23,6 +23,7 @@ def nCr(n, r):
 class FeatureClass:
     def __init__(self, params, is_eval=False):
         """
+
         :param params: parameters dictionary
         :param is_eval: if True, does not load dataset labels.
         """
@@ -151,6 +152,7 @@ class FeatureClass:
     def get_labels_for_file(self, _desc_file):
         """
         Reads description file and returns classification based SED labels and regression based DOA labels
+
         :param _desc_file: metadata description file
         :return: label_mat: labels of the format [sed_label, doa_label],
         where sed_label is of dimension [nb_frames, nb_classes] which is 1 for active sound event else zero
@@ -192,6 +194,85 @@ class FeatureClass:
                 #extract mel
                 mel_spect = self._get_mel_spectrogram(spect)
                 feat = None
+
+                ##### CUSTOM data augmentation that does not change label, only in train dataset
+                # These offline augmentation techniques are applied on the spectograms
+                if not self._is_eval and self._data_augm is not 0:
+                    was_augmented = False
+                    t_mel_spect = np.reshape(mel_spect, (mel_spect.shape[0], -1, self._nb_channels))
+                    t_mel_spect = np.transpose(t_mel_spect, (2,0,1))
+                    if self._data_augm == 1:
+                        feat_augm, was_augmented = SpecAugmentNp()(t_mel_spect)
+                    elif self._data_augm == 2:
+                        feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(t_mel_spect)
+                    elif self._data_augm == 3:
+                        feat_augm1, was_augmented1 = SpecAugmentNp()(t_mel_spect)
+                        feat_augm2, was_augmented2 = RandomShiftUpDownNp(freq_shift_range=10)(t_mel_spect)
+                    if was_augmented:
+                        #have a list of the names of files that were augmented, to copy the labels on that index
+                        self.augm_indx = np.append(self.augm_indx, file_name)
+                        if was_augmented1 or was_augmented2:
+                            feat_augm = np.transpose(feat_augm, (1,2,0))
+                        else:
+                            feat_augm = np.transpose(feat_augm, (1,2,0))
+                        feat_augm = np.reshape(feat_augm, (feat_augm.shape[0], -1))
+                        if self._dataset == 'foa':
+                            # extract intensity vectors
+                            foa_iv = self._get_foa_intensity_vectors(spect)
+                            feat = np.concatenate((feat_augm, foa_iv), axis=-1)
+                        elif self._dataset == 'mic':
+                            # extract gcc
+                            gcc = self._get_gcc(spect)
+                            feat = np.concatenate((feat_augm, gcc), axis=-1)
+                        else:
+                            print('ERROR: Unknown dataset format {}'.format(self._dataset))
+                            exit()
+
+                        if feat is not None:
+                            print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat)
+                        
+                    if was_augmented1:
+                        self.augm_indx = np.append(self.augm_indx, file_name)
+                        feat_augm1 = np.transpose(feat_augm1, (1,2,0))
+                        feat_augm1 = np.reshape(feat_augm1, (feat_augm1.shape[0], -1))
+
+                        if self._dataset == 'foa':
+                            # extract intensity vectors
+                            foa_iv = self._get_foa_intensity_vectors(spect)
+                            feat = np.concatenate((feat_augm1, foa_iv), axis=-1)
+                        elif self._dataset == 'mic':
+                            # extract gcc
+                            gcc = self._get_gcc(spect)
+                            feat = np.concatenate((feat_augm1, gcc), axis=-1)
+                        else:
+                            print('ERROR: Unknown dataset format {}'.format(self._dataset))
+                            exit()
+
+                        if feat is not None:
+                            print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat)
+                    if was_augmented2:
+                        self.augm_indx = np.append(self.augm_indx, file_name)
+                        feat_augm2 = np.transpose(feat_augm2, (1,2,0))
+                        feat_augm2 = np.reshape(feat_augm2, (feat_augm2.shape[0], -1))
+
+                        if self._dataset == 'foa':
+                            # extract intensity vectors
+                            foa_iv = self._get_foa_intensity_vectors(spect)
+                            feat = np.concatenate((feat_augm2, foa_iv), axis=-1)
+                        elif self._dataset == 'mic':
+                            # extract gcc
+                            gcc = self._get_gcc(spect)
+                            feat = np.concatenate((feat_augm2, gcc), axis=-1)
+                        else:
+                            print('ERROR: Unknown dataset format {}'.format(self._dataset))
+                            exit()
+                        if feat is not None:
+                            print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat)
+                #######
+
                 if self._dataset == 'foa':
                     # extract intensity vectors
                     foa_iv = self._get_foa_intensity_vectors(spect)
@@ -206,21 +287,7 @@ class FeatureClass:
 
                 if feat is not None:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
-                    ##### CUSTOM data augmentation that does not change label, only in train dataset
-                    if not self._is_eval and self._data_augm is not 0:
-                        if self._data_augm == 1:
-                            feat = np.reshape(feat, (1, feat.shape[0], feat.shape[1]))
-                            feat_augm, was_augmented = SpecAugmentNp()(feat)
-                            feat_augm = np.reshape(feat_augm, ( feat_augm.shape[1], feat_augm.shape[2]))
-                            feat = np.reshape(feat, (feat.shape[1], feat.shape[2]))
-                        elif self._data_augm == 2:
-                            feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
-                        if was_augmented:
-                            #have a list of the names of files that were augmented, to copy the labels on that index
-                            self.augm_indx = np.append(self.augm_indx, file_name)
-                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat_augm)
-                            print('\t{}: {}_augm, {}'.format(file_cnt, file_name, feat.shape ))
-                    #######
+
                     np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
 
                     
@@ -289,18 +356,17 @@ class FeatureClass:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
                     np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
                     #CUSTOM save twice if the file is augmented
-                    ##in ubuntu files not saved alphabeticaly, so need to run whole list to check for current file
-                    if self._data_augm is not 0 and self._is_eval==False:
+                    if self._data_augm is not 0:
                         print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
-                        for i in range(len(self.augm_indx)):
-                            if self.augm_indx[i] == wav_filename :
-                                np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
-                                break
-
+                        if self.augm_indx[i] == wav_filename :
+                            np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
+                            i +=1
+                    
     # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
     def load_output_format_file(self, _output_format_file):
         """
         Loads DCASE output format csv file and returns it in dictionary format
+
         :param _output_format_file: DCASE output format CSV
         :return: _output_dict: dictionary
         """
@@ -322,6 +388,7 @@ class FeatureClass:
     def write_output_format_file(self, _output_format_file, _output_format_dict):
         """
         Writes DCASE output format csv file, given output format dictionary
+
         :param _output_format_file:
         :param _output_format_dict:
         :return:
@@ -378,6 +445,7 @@ class FeatureClass:
     def regression_label_format_to_output_format(self, _sed_labels, _doa_labels):
         """
         Converts the sed (classification) and doa labels predicted in regression format to dcase output format.
+
         :param _sed_labels: SED labels matrix [nb_frames, nb_classes]
         :param _doa_labels: DOA labels matrix [nb_frames, 2*nb_classes] or [nb_frames, 3*nb_classes]
         :return: _output_dict: returns a dict containing dcase output format

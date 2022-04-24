@@ -15,21 +15,30 @@ def get_params(argv='1'):
         # 1 for resnet 18
         # 2 for resnet 34
         # 3 for conformer block
+        # 4 for ensemble method of 3 diff freq, in order to detect overlaping events of same class
+        # if on atleast 2 models there is the same class active, then it is possible we have same overlapping class
+        # so average the predictions->might need to do SED and then DOA 
+        # 6 ready conformer
+
 
         dconv_kernel_size = 31, ## size of depthwise convolution for conformer approach
         nb_conf = 2,            ## number of conformer layers before SED and DOA separation 
-
+        
         decoder = 0,
         # 0 for bi-gru
         # 1 for lstm
 
-        data_augm = 2,
+        data_augm = 0,
         # 0: None
         # 1: masking
         # 2: random shift up/down
-        #####END CUSTOM PARAMETERS ############
+        # 3: apply all da techniques
 
-        quick_test=True,           # If True: Trains/test on small subset of dataset, and # of epochs
+        learning_rate = 0.01,
+        #####END CUSTOM PARAMETERS ############
+        
+
+        quick_test=False,           # If True: Trains/test on small subset of dataset, and # of epochs
 
         # INPUT PATH
         dataset_dir='./input_data',  # Base folder containing the foa_dev/mic_dev and metadata folders
@@ -55,9 +64,9 @@ def get_params(argv='1'):
         doa_objective='mse',        # if is_accdoa=True this is ignored, otherwise it supports: mse, masked_mse. where mse- original seld approach; masked_mse - dcase 2020 approach
 
         label_sequence_length=60,   # Feature sequence length
-        batch_size=4,             # Batch size ###############ORIGINAL 256
+        batch_size=16,             # Batch size ###############ORIGINAL 256
         dropout_rate=0.05,          # Dropout rate, constant for all layers
-        nb_cnn2d_filt=32,           # Number of CNN nodes, constant for each layer#original 64
+        nb_cnn2d_filt=64,           # Number of CNN nodes, constant for each layer#original 64
         f_pool_size=[4, 4, 2],      # CNN frequency pooling, length of list = number of CNN layers, list value = pooling per layer
 
         rnn_size=[128, 128],        # RNN contents, length of list = number of layers, list value = number of nodes
