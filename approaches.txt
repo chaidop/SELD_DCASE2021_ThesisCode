@@ -1,0 +1,68 @@
+APPROACHES:
+ARCHITECTURE:
+-ResNet
+-bidirectional-GRU replaced by Conformer blocks(a convolution-augmented 
+transformer architecture)
+( the transformer can be used to extract long sequence dependencies, and
+convolution is suitable for refining local features.)
+-CNN
+-Max pool
+-GRU
+-attention layer based on CMA to learn associations in SED and DOA 
+-Replace cnn of SELDnet with Conv-StandardPOST
+with scSE (concurrent spatial and channel SQUEEZE and EXCITATION) in it
+-ResNet 22
+-MHSA
+-SALSA
+-M2M-AST, uses a fully Transformer network to reduce dependency of CNN
+-Deep learning, multiscale network, NAS to process input and MHSA for output
+-EINV-2, ensembles
+-AHConv
+-Multi-scale feature extractor (combination of DenseNet and dilated convolution)
+-Adaptive attention block
+-sELF-ATTENTION LAYERS (Transformer encoder)
+
+DATA AUGMENTATION->prevent generalisation and overfitting
+1st:
+-Slice reorganisation
+2nd:
+-SFR (Sound Field Rotation)
+-Time Masking(10th, 11th, 12th, 14TH)
+-Random Audio Equalization
+3rd:
+-Frequency Masking(5th, 6th, 10th, 11th, 12th, 14TH)
+-FOA domain spatial augmentation
+-Multiply magnitude by random constant
+4th:
+-Mixup
+-Channel  Rotation(14TH)
+8th:
+-Rotation augmentation
+10TH:
+-equalized mixure, where up to two audio events are mixed with random amplitudes,
+delays, and the modulation of frequency characteristics,
+-impulse response simulation (IRS)
+12th:
+-Time Wraping
+-Speed perturbation(14TH)
+
+CHANGING INPUT FORMAT (2nd report->raw input, 6th SALSA  )
+
+ENSEMBLE METHODS(using combinations of models or multiple of other things and taking the average (?)))
+-bDNN(3rd)
+-stochastic weight averaging (3rd)
+-Average predictions(3rd)
+-ensemble the SELD networks (6th)
+
+OTHER TECHNIQUES
+-Adaptive gradient clipping(3rd)
+-Parameter Sharing(4th)
+-LEARNING RATE DECAY (5TH)
+-Self attention (6th, 7th)
+-Pretrained ViT(Transformers) (7th)
+-Data synthesis (9th)
+-IRS to generalise the models, generates simulated multi-channel signals 
+by convolving simulated room impulse responses (RIRs) with source signals extracted 
+from the original dataset (10th)
+- post-processing of minimum thresholding for each sound event 
+using a hyperparameter search(14th)
