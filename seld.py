@@ -15,6 +15,35 @@ import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
 
+global history 
+
+import tensorflow
+import math
+
+sd=[]
+class LossHistory(tensorflow.keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = [1,1]
+
+    def on_epoch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        sd.append(step_decay(len(self.losses)))
+        print('lr:', step_decay(len(self.losses)))
+
+# learning rate schedule
+def step_decay(losses):
+    print('decay ')
+    if float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
+        print('changed')
+        lrate=0.001*1/(1+0.1*len(history.losses))
+        momentum=0.8
+        decay_rate=2e-6
+        return lrate
+    else:
+        print('hist loss ',history.losses[-1])
+        lrate=0.0001
+        return lrate
+    
 def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred, _doa_pred):
     '''
     Write the filewise results to individual csv files
@@ -166,19 +195,26 @@ def main(argv):
             cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                              save_weights_only=False,
                                                              verbose=1,save_freq=10*params['batch_size'])
+            history=LossHistory()
+            import tensorflow
+            lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
+
             # train once per epoch
             hist = model.fit_generator(
                 generator=data_gen_train.generate(),
                 steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
                 epochs=params['epochs_per_fit'],
-                verbose=2,
-                callbacks=[cp_callback]
+                verbose=2,callbacks=[history,lrate, cp_callback]
             )
             tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
-            plt.title('loss in time')
+
             ##CUSTOM plot loss
-            pd.DataFrame(hist.history).plot()
-            plt.title("Loss over time")
+            pd.DataFrame(hist.history).plot(figsize=(8,5))
+            import matplotlib
+            matplotlib.use('TkAgg')
+            plt.title('model metrics')
+            plt.show()
+            
             # predict once per epoch
             pred = model.predict_generator(
                 generator=data_gen_val.generate(),
