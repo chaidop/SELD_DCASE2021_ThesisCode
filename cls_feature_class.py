@@ -15,6 +15,7 @@ import shutil
 import math
 from data_augmentation import *
 
+global was_augmented1, was_augmented2
 
 def nCr(n, r):
     return math.factorial(n) // math.factorial(r) // math.factorial(n-r)
@@ -64,6 +65,7 @@ class FeatureClass:
 
         #### CUSTOM array of indexes of augmented files
         self.augm_indx = []
+        self.augm_indx2 = []
         self._data_augm = params['data_augm']
 
         # Sound event classes dictionary
@@ -251,9 +253,9 @@ class FeatureClass:
 
                         if feat is not None:
                             print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
-                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat)
+                            np.save(os.path.join(self._feat_dir, '{}_augm1.npy'.format(wav_filename.split('.')[0])), feat)
                     if was_augmented2:
-                        self.augm_indx = np.append(self.augm_indx, file_name)
+                        self.augm_indx2 = np.append(self.augm_indx2, file_name)
                         feat_augm2 = np.transpose(feat_augm2, (1,2,0))
                         feat_augm2 = np.reshape(feat_augm2, (feat_augm2.shape[0], -1))
 
@@ -270,7 +272,7 @@ class FeatureClass:
                             exit()
                         if feat is not None:
                             print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
-                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat)
+                            np.save(os.path.join(self._feat_dir, '{}_augm2.npy'.format(wav_filename.split('.')[0])), feat)
                 #######
 
                 if self._dataset == 'foa':
@@ -357,10 +359,22 @@ class FeatureClass:
                     np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
                     #CUSTOM save twice if the file is augmented
                     if self._data_augm is not 0:
-                        print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
-                        if self.augm_indx[i] == wav_filename :
-                            np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
-                            i +=1
+                        if self._data_augm == 3:
+                            if was_augmented1:
+                                print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
+                                if self.augm_indx[i] == wav_filename :
+                                    np.save(os.path.join(self._label_dir, '{}_augm1.npy'.format(wav_filename.split('.')[0])), label_mat)
+                                    i +=1
+                            if was_augmented2:
+                                print(i, self.augm_indx2[i], self.augm_indx2[i]==wav_filename)
+                                if self.augm_indx2[i] == wav_filename :
+                                    np.save(os.path.join(self._label_dir, '{}_augm2.npy'.format(wav_filename.split('.')[0])), label_mat)
+                                    i +=1
+                        else:
+                            print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
+                            if self.augm_indx[i] == wav_filename :
+                                np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
+                                i +=1
                     
     # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
     def load_output_format_file(self, _output_format_file):
