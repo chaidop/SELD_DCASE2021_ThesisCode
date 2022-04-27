@@ -242,9 +242,9 @@ class DataGenerator(object):
                     ##CUSTOM if ensemble method of 3 freq is used 
                     #then generate 3 feat instead of  and 3 respective labels
                     if self.model_approach == 4:
-                        feat1 = EnsembleFreqMasking(min = 0, max = 32)(feat)
-                        feat2 = EnsembleFreqMasking(min = 16, max = 48)(feat)
-                        feat3 = EnsembleFreqMasking(min = 32, max = 64)(feat)
+                        feat1 = EnsembleFreqMasking(min = [32], max = [64])(feat)
+                        feat2 = EnsembleFreqMasking(min = [0, 32], max = [16, 64])(feat)
+                        feat3 = EnsembleFreqMasking(min = [0], max = [32])(feat)
 
                         feat = np.concatenate(feat1, feat2, feat3)
 
