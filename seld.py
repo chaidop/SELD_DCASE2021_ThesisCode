@@ -30,20 +30,22 @@ class LossHistory(tensorflow.keras.callbacks.Callback):
         sd.append(step_decay(len(self.losses)))
         print('lr:', step_decay(len(self.losses)))
 
-# learning rate schedule
+history=LossHistory()
+
+# learning rate schedule, decrease by 31%
 def step_decay(losses):
     print('decay ')
-    if float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
+    if  float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
         print('changed')
-        lrate=0.001*1/(1+0.1*len(history.losses))
+        #lrate = -history.losses[-1]*0.31 + history.losses[-1]
+        lrate=0.001*1/(1+0.01*len(history.losses))
         momentum=0.8
         decay_rate=2e-6
         return lrate
     else:
         print('hist loss ',history.losses[-1])
-        lrate=0.0001
+        lrate=0.001
         return lrate
-    
 def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred, _doa_pred):
     '''
     Write the filewise results to individual csv files
@@ -151,22 +153,14 @@ def main(argv):
             params['dropout_rate'], params['nb_cnn2d_filt'], params['f_pool_size'], params['t_pool_size'], params['rnn_size'],
             params['fnn_size'], params['doa_objective']))
 
-        #CUSTOM
-        checkpoint_path = "training_checkpoints/cp2-{epoch:04d}.ckpt"
-        #check if it already exists, if yes, then load the model and continue training from the checkpoint
-        import os
-        if os.path.exists(checkpoint_path):
-            model = load_model(filepath)
-        else:    
-            print('Using loss weights : {}'.format(params['loss_weights']))
-            model = keras_models2.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
-                                          nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
-                                          rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
-                                          weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                          model_approach=3,
-                                          depth = params['nb_conf'],
-                                          decoder = params['decoder'],
-                                          dconv_kernel_size = params['dconv_kernel_size'])
+        print('Using loss weights : {}'.format(params['loss_weights']))
+        model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
+                                      model_approach=params['model_approach'],
+                                      depth = params['nb_conf'],
+                                      decoder = params['decoder'])
 
         # Dump results in DCASE output format for calculating final scores
         dcase_output_val_folder = os.path.join(params['dcase_output_dir'], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
@@ -186,16 +180,7 @@ def main(argv):
         # start training
         for epoch_cnt in range(nb_epoch):
             start = time.time()
-            ##CUSTOM 
-            checkpoint_path = "training_checkpoints/cp-{epoch:04d}.ckpt"
-            checkpoint_dir = os.path.dirname(checkpoint_path)
-            
-            # Create a callback that saves the model's weights
-            #save weights once per 5 epochs (model actually trains 5 epochs for 50 nb_epochs)
-            cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                             save_weights_only=False,
-                                                             verbose=1,save_freq=10*params['batch_size'])
-            history=LossHistory()
+
             import tensorflow
             lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
 
@@ -204,7 +189,7 @@ def main(argv):
                 generator=data_gen_train.generate(),
                 steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
                 epochs=params['epochs_per_fit'],
-                verbose=2,callbacks=[history,lrate, cp_callback]
+                verbose=2,callbacks=[history,lrate]
             )
             tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
 
@@ -213,8 +198,9 @@ def main(argv):
             import matplotlib
             matplotlib.use('TkAgg')
             plt.title('model metrics')
-            plt.show()
-            
+            if epoch_cnt == nb_epoch - 1:
+                plt.show()
+
             # predict once per epoch
             pred = model.predict_generator(
                 generator=data_gen_val.generate(),
@@ -238,7 +224,7 @@ def main(argv):
             if seld_metric[epoch_cnt, -1] < best_seld_metric:
                 best_seld_metric = seld_metric[epoch_cnt, -1]
                 best_epoch = epoch_cnt
-                model.save(model_name)
+                #model.save(model_name)
                 patience_cnt = 0
 
             print(
@@ -270,7 +256,7 @@ def main(argv):
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
 
-        model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'], params['model_approach'])
+        #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'], params['model_approach'])
         pred_test = model.predict_generator(
             generator=data_gen_test.generate(),
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
@@ -302,7 +288,7 @@ def main(argv):
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
 
-
+    model.save(model_name)
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))
