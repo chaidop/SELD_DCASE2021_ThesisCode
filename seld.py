@@ -330,7 +330,7 @@ def main(argv):
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
 
-    model.save(model_name)
+    model.save_weights(model_name)#modified because of memoryerror, it was save instead
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))
