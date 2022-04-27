@@ -68,11 +68,11 @@ class EnsembleFreqMasking(EnsembleMaskingNumpyBase):
         new_spec = x.copy()
 
         for i in np.arange(self.n_freq_stripes):
-            dur = max_value - min_value ## diastima apokopis
+            dur = max_value[i] - min_value[i] ## diastima apokopis
             #gia to 1o model: 0-12kHz or 0-32 mel-bins
             #gia to 2o model: 6-18 kHZ or 16-48 mel-bins
             #gia ti 3o model: 12-24 kHz or 32-64 mel-bins
-            start_idx = min_value
+            start_idx = min_value[i]
             new_spec[:, :, start_idx:start_idx + dur] = 0.0
 
         return new_spec
