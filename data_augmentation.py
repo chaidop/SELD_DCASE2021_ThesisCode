@@ -394,11 +394,8 @@ class RandomShiftUpDownNp(DataAugmentNumpyBase):
         self.n_last_channels = n_last_channels
 
     def apply(self, x: np.ndarray):
-        shape = np.array(1)
-        shape = np.append(shape, x.shape[-2])
-        shape = np.append(shape, x.shape[-1])
-        #shape.append(x.shape)
-        n_channels, n_timesteps, n_features = shape
+        
+        n_channels, n_timesteps, n_features = x.shape
         if self.freq_shift_range is None:
             self.freq_shift_range = int(n_features * 0.08)
         shift_len = np.random.randint(1, self.freq_shift_range, 1)[0]
@@ -407,7 +404,6 @@ class RandomShiftUpDownNp(DataAugmentNumpyBase):
         else:
             direction = self.direction
         new_spec = x.copy()
-        new_spec = new_spec.reshape(1,new_spec.shape[0], new_spec.shape[1])
         if self.n_last_channels == 0:
             if direction == 'up':
                 new_spec = np.pad(new_spec, ((0, 0), (0, 0), (shift_len, 0)), mode=self.mode)[:, :, 0:n_features]
@@ -420,7 +416,6 @@ class RandomShiftUpDownNp(DataAugmentNumpyBase):
             else:
                 new_spec[:-self.n_last_channels] = np.pad(
                     new_spec[:-self.n_last_channels], ((0, 0), (0, 0), (0, shift_len)), mode=self.mode)[:, :, shift_len:]
-        new_spec = new_spec.reshape(new_spec.shape[1], new_spec.shape[2])
         return new_spec
 
 
