@@ -9,6 +9,7 @@ from IPython import embed
 from collections import deque
 import random
 from data_augmentation import *
+from utils import *
 
 
 class DataGenerator(object):
@@ -50,6 +51,7 @@ class DataGenerator(object):
         #check if data is for training, if true then data augmentation can be used
         #else if it is for predict do not augment
         self.train = train
+        self.model_approach = params['model_approach']
 
         if self._per_file:
             self._nb_total_batches = len(self._filenames_list)
@@ -237,14 +239,21 @@ class DataGenerator(object):
                     #(64, 300, 64, 10) (batches, SEQ_LEN, MEL_BINS, CHAN)
                     feat = self._split_in_seqs(feat, self._feature_seq_len)
                     feat = np.transpose(feat, (0, 3, 1, 2))
-                    ##CUSTOM extra arameter to augment the list if 
-                    # a data augmented feature is added
+                    ##CUSTOM if ensemble method of 3 freq is used 
+                    #then generate 3 feat instead of  and 3 respective labels
+                    if self.model_approach == 4:
+                        feat1 = EnsembleFreqMasking(min = 0, max = 32)(feat)
+                        feat2 = EnsembleFreqMasking(min = 16, max = 48)(feat)
+                        feat3 = EnsembleFreqMasking(min = 32, max = 64)(feat)
 
-                    temp_feat_full = np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
-                    temp_label_full = np.zeros((2*feat.shape[0], self._label_seq_len, self._label_len))
+                        feat = np.concatenate(feat1, feat2, feat3)
+
+                    
                     ##CUSTOM add a data augmented feature in the array
                     #for each batch segment(64 segments) add that to specaugm
                     if self.data_augm is not 0 and self.train:
+                        temp_feat_full = np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
+                        temp_label_full = np.zeros((2*feat.shape[0], self._label_seq_len, self._label_len))
                         #reset index array 
                         self.augm_indx = np.array([0], dtype=np.int8)
                         counter = 0
@@ -252,7 +261,7 @@ class DataGenerator(object):
                             temp_feat_full[j,:,:,:] = feat[j,:,:,:]
                             was_augm = False
                             if self.data_augm == 1:
-                                feat_augm, was_augm = SpecAugmentNp(nb_ch = self._nb_ch, nb_mel_bins=self._nb_mel_bins)(feat[j, :, :, :])
+                                feat_augm, was_augm = SpecAugmentNp()(feat[j, :, :, :])
                             elif self.data_augm == 2:
                                 feat_augm, was_augm = RandomShiftUpDownNp(freq_shift_range=10)(feat[j, :, :, :])
                             if was_augm is True:
@@ -266,8 +275,10 @@ class DataGenerator(object):
                     
                     #(64, 60, 48) (BATCH SIZE, SEQ LEN, CLASSES)
                     label = self._split_in_seqs(label, self._label_seq_len)
-                    #CUSTOM search through labels and append a copy of a label at the augmented index
-                    #if index is augmented, copy label twice
+                     ##CUSTOM if ensemble method of 3 freq is used 
+                    #then generate 3 feat instead of  and 3 respective labels
+                    if self.model_approach == 4:
+                        label = np.concatenate(label, label, label)
                     if self.data_augm is not 0 and self.train:
                         counter = 0
                         for j in range(label.shape[0]):
