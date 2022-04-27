@@ -14,6 +14,7 @@ import time
 import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
 
 global history 
 
@@ -31,21 +32,23 @@ class LossHistory(tensorflow.keras.callbacks.Callback):
         print('lr:', step_decay(len(self.losses)))
 
 history=LossHistory()
+import tensorflow
 
-# learning rate schedule, decrease by 31%
+# learning rate schedule
 def step_decay(losses):
     print('decay ')
-    if  float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
+    if float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
         print('changed')
-        #lrate = -history.losses[-1]*0.31 + history.losses[-1]
-        lrate=0.001*1/(1+0.01*len(history.losses))
+        lrate=0.0001*1/(1+0.01*len(history.losses))
         momentum=0.8
         decay_rate=2e-6
         return lrate
     else:
         print('hist loss ',history.losses[-1])
-        lrate=0.001
+        lrate=0.0001
         return lrate
+lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
+
 def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred, _doa_pred):
     '''
     Write the filewise results to individual csv files
@@ -135,10 +138,17 @@ def main(argv):
 
         # Load train and validation data
         print('Loading training dataset:')
+        
         data_gen_train = cls_data_generator.DataGenerator(
             params=params, split=train_splits[split_cnt], train=True
         )
-
+        if params['model_approach'] == 4:
+            data_gen_train2 = cls_data_generator.DataGenerator(
+            params=params, split=train_splits[split_cnt], train=True
+            )
+            data_gen_train3 = cls_data_generator.DataGenerator(
+            params=params, split=train_splits[split_cnt], train=True
+            )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
             params=params, split=val_splits[split_cnt], shuffle=False, per_file=True, is_eval=False
@@ -153,6 +163,7 @@ def main(argv):
             params['dropout_rate'], params['nb_cnn2d_filt'], params['f_pool_size'], params['t_pool_size'], params['rnn_size'],
             params['fnn_size'], params['doa_objective']))
 
+        
         print('Using loss weights : {}'.format(params['loss_weights']))
         model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
@@ -160,10 +171,11 @@ def main(argv):
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
                                       model_approach=params['model_approach'],
                                       depth = params['nb_conf'],
-                                      decoder = params['decoder'])
-
+                                      decoder = params['decoder'],
+                                      dconv_kernel_size = params['dconv_kernel_size'],
+                                      nb_conf = params['nb_conf'])
         # Dump results in DCASE output format for calculating final scores
-        dcase_output_val_folder = os.path.join(params['dcase_output_dir'], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
+        dcase_output_val_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
         cls_feature_class.delete_and_create_folder(dcase_output_val_folder)
         print('Dumping recording-wise val results in: {}'.format(dcase_output_val_folder))
 
@@ -177,30 +189,57 @@ def main(argv):
         tr_loss = np.zeros(nb_epoch)
         seld_metric = np.zeros((nb_epoch, 5))
 
+        checkpoint_path = "training_checkpoints/model_3/cp-0005.ckpt"
+        if os.path.exists(checkpoint_path):
+            #checkpoint_dir = os.path.dirname(checkpoint_path)
+            #latest = tf.train.latest_checkpoint(checkpoint_dir)
+            #model.load_weights(checkpoint_path)
+            print("heeeeeeeeeeee")
+            from keras.models import load_model
+            checkpoint_dir = os.path.dirname(checkpoint_path)
+            latest = tf.train.latest_checkpoint(checkpoint_dir)
+            #saving only the weights since i have custom AdaBelief optimizer and it gives warning
+            model.load_weights(latest)
+            
+            #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'], True, checkpoint_path)
         # start training
         for epoch_cnt in range(nb_epoch):
             start = time.time()
-
-            import tensorflow
-            lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
-
+            ##CUSTOM 
+            checkpoint_path = "training_checkpoints/model_3/cp-0005.ckpt"
+            checkpoint_dir = os.path.dirname(checkpoint_path)
+            print("heyyy ",checkpoint_path)
+            # Create a callback that saves the model's weights
+            #save weights once per 3 epochs (model actually trains 5 epochs for 50 nb_epochs)
+            #cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                            # save_weights_only=True,
+                                                            # verbose=1,save_freq='epoch')
             # train once per epoch
             hist = model.fit_generator(
                 generator=data_gen_train.generate(),
                 steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
                 epochs=params['epochs_per_fit'],
-                verbose=2,callbacks=[history,lrate]
+                verbose=2,
+                callbacks=[history,lrate]
             )
+            
+            #CUSTOM
+            #model.save('model_checkpoint/checkpoint{epoch_cnt:04d}.h5')
+            
             tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
-
+           
             ##CUSTOM plot loss
-            pd.DataFrame(hist.history).plot(figsize=(8,5))
-            import matplotlib
-            matplotlib.use('TkAgg')
-            plt.title('model metrics')
-            if epoch_cnt == nb_epoch - 1:
-                plt.show()
-
+            #pd.DataFrame(hist.history).plot()
+            #plt.title("Loss over time")
+            history_dict = hist.history
+            print(history_dict.keys())
+            # summarize history for loss
+            plt.plot(hist.history['loss'])
+            plt.title('model loss')
+            plt.ylabel('loss')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'test'], loc='upper left')
+            plt.show()
             # predict once per epoch
             pred = model.predict_generator(
                 generator=data_gen_val.generate(),
@@ -222,9 +261,11 @@ def main(argv):
 
             patience_cnt += 1
             if seld_metric[epoch_cnt, -1] < best_seld_metric:
+                print('saving...')
                 best_seld_metric = seld_metric[epoch_cnt, -1]
                 best_epoch = epoch_cnt
                 #model.save(model_name)
+                print('saved!')
                 patience_cnt = 0
 
             print(
@@ -255,8 +296,9 @@ def main(argv):
         data_gen_test = cls_data_generator.DataGenerator(
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
-
-        #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'], params['model_approach'])
+        
+        print(unique_name)
+        #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
         pred_test = model.predict_generator(
             generator=data_gen_test.generate(),
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
@@ -273,7 +315,7 @@ def main(argv):
 
 
         # Dump results in DCASE output format for calculating final scores
-        dcase_output_test_folder = os.path.join(params['dcase_output_dir'], '{}_{}_{}_test'.format(task_id, params['dataset'], params['mode']))
+        dcase_output_test_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_test'.format(task_id, params['dataset'], params['mode']))
         cls_feature_class.delete_and_create_folder(dcase_output_test_folder)
         print('Dumping recording-wise test results in: {}'.format(dcase_output_test_folder))
         dump_DCASE2021_results(data_gen_test, feat_cls, dcase_output_test_folder, test_sed_pred, test_doa_pred)
