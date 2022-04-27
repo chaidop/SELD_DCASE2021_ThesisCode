@@ -1,0 +1,139 @@
+18/4/2022
+found github https://github.com/qubvel/classification_models
+may try some implementations if i have time
+it has ready resnets->mine may not be good
+using the githubs resnet18 waiting for resutls
+
+could not make it work>back to windows version
+
+CHECK THIS:https://www.youtube.com/watch?v=ZUKz4125WNI
+how to plot loss and do callbacks for ideal learning rate->>MIGHT INCLUDE THIS IN PAPER
+will attempt to run simultaneously another google colab notebook
+with conformer ubuntu but not the ready-conformer->the version that i run at 14 April on github!!(the  one i did when i played spooderman)
+uploaded (on drive) seld2.py and keras_models2.py that calls the april 14 conformer version
+also added to seld2 the checkpoints and the history plot code i added to the seld.py drive file(have not uploaded to github yet) 
+Unfortunately can only run one notebook with gpu at once
+
+changed the learning rate to 0.003 in keras_models.py in my drive for google colab resnet18 daugm=2
+ALSO LOOK into changing frequncy and window hop->>next test
+
+NOW RUNNING::->Turbox locally resnet18 da=2 (gpu)
+		 ->Google Colab resnet18 da=2 lr=0.003 (cpu)
+		 ->Google colab my conformer da=2 (gpu)
+		 ->Lenovo ready conformer da=2 (gpu)
+
+CANNOT run tf 2.0.0 with gpu in collab
+tried with tf 2.2.0, keras 2.2.4, keras 2.3.0
+tf 2.5.0 keras 2.5.0
+tf 2.3.0 keras 2.3.1
+noting worked
+SO trying to run tf 2.4.1 keras 2.4.1 with gpu
+
+19/4/2022
+Google colab esnet18 takes ime in cpu and since i already run same model and aumentation locally on turbox, i stopped it
+i will try to run same (da=2, lr=0.003) with baseline since it has fewer parameters
+i will also try and put AdaBelief
+
+NOW RUNNING::->Turbox locally resnet18 da=2 (gpu)
+		 ->Google Colab baseline da=2 lr=0.003 AdaBelief (cpu)
+		 ->Google colab my conformer da=2 (gpu) (stuck loss = 0.0384)
+		 ->Lenovo ready conformer da=2 (gpu)
+
+20/4/2022
+
+Google Colab baseline da=2 lr=0.003 AdaBelief (cpu)->4 epochs
+
+Getting Unkown layer: Conformer
+to save and load the conformer custom class, i will save in tf format isntad of h5->didnt work
+nvm it was in load_model needed to adda gain the {Conformer: Conformer} tag->it now works->> uloading to github
+
+21/4/2022
+
+NOW RUNNING::->Turbox locally baseline da=2 lr=0.003 AdaBelief(tf 2.4.1 keras 2.4.1) (gpu)->DONE with resnet18 gave better than no augm but the visualization was wors for some reason (on github, result_models/resnet18_da2)
+		 ->Google Colab baseline da=2 lr=0.003 AdaBelief (cpu)->>will do it loally
+		 ->Google colab my conformer da=2 (tf 2.0.0 keras 2.3.1) F 2.0.0 CANT RUN GPU (stuck loss = 0.0384)->continuing, might also run locally on LENOVO cause of colabs gpu restriction 
+		 ->Lenovo ready conformer da=2 (gpu)
+
+22/4/2022
+
+Baseline da0 with AdaBelief gives trash ->not good
+will try with Adam again but will give lr=0.003 da0
+
+TO DO::::::::::
+>Baseline takes only around 5 hours so i will experiment on it for:
+ diferent opimizers, learning rates, window and frequency, custom learing rate decay, custom gradient training (look t Ko (with ... Gradient.tape))  ...
+>ALSO try my conformer with turbox but NO AUGM and LSTM as decoder (read conformer paper)->conda with tf 2.1.0 keras 2.3.1 to not use the channels_last OR tf 2.4.1 keras 2.4.1 (turbox locally not conda)
+>AND pseudoresnet34 no augm on lenovo to see how it was run (i think da2 and tf 2.4.1, but to make sure, if it is then my augmentation (offline) was not wrong)
+>>ALSO try sepaating the sed and doa like KO!!
+
+running tf 2.1.0 keras 2.2.4 does not fully utilize the gpu
+and also constant result (0.0380) for baseline NO AUGMENTATION adam lr=0.003
+
+will run evrithing on tf 2.4.1 and keras 2.4.1 even if im concerned with channels_last i need to run tf 2.4.1
+
+TRY EVRITHING WITH 0 DATA AUGMENTATION
+OR
+TRY OFFLINE DATA AUGMENTATION->WROTE CODE IT ON LENOVO FOR SPECAUGM TOO
+
+I think i run pseudoresnet34 (th one that worked) with tf 2.4.1 and da2 
+
+NOW RUNNING::->Turbox locally baseline da=0 lr=0.003 Adam(tf 2.4.1 keras 2.4.1) (gpu)-> COMPUTER DECIDED TO TURN OF WHILE I WAS SLEEPING SO HAVE TO RESTART!!! YAYYYYYYY
+		 ->Google colab my conformer da=2 (tf 2.0.0 keras 2.3.1) F 2.0.0 CANT RUN GPU (stuck loss = 0.0384)->continuing, might also run locally on LENOVO cause of colabs gpu restriction 
+		 ->Lenovo resnet18 da=1 online(gpu)
+		 ->Asus baseline da=0 Adam with binary cross entropy tf 2.4.1 keras 2.4.1
+
+Tried online da=1 with resnet8 (lenovo still running tho), baseline (asus) and got trash results (negative loss)
+maybe its my augmentation that breaks evrithing
+
+FROM SCREENSHOTS in lenovo, i think the pseudoresnet34 that gave good results (uploaded on github on 13 April) was LSTM, da2 and tf 2.4.1 so channels_last not the problem
+
+baseline da0 binary cross entropy also gives trash (negative loss)
+
+rEAD PAPERS 
+
+augmentation offline done on spectograms
+
+https://www.google.com/search?q=d3net+architecture&sxsrf=APq-WBtzCMtSsUr-Xu3s4HZLjB2LkN2ArA%3A1650662178332&ei=IhtjYoL5E9X-sAeGtZHQCQ&oq=d3net+arc&gs_lcp=Cgdnd3Mtd2l6EAEYAzIFCCEQoAEyBQghEKABMgUIIRCgATIFCCEQoAEyBQghEKABOgcIIxCwAxAnOgcIABBHELADOgYIABAWEB5KBAhBGABKBAhGGABQjgtY7Rlg8C5oAnABeACAAYIBiAHDApIBAzIuMZgBAKABAcgBBcABAQ&sclient=gws-wiz#imgrc=X_p-FcC40wQzUM
+
+23/4/2022
+
+RUN::		 
+		->Turbox locally baseline da=0 lr=0.1 Adam(tf 2.4.1 keras 2.4.1) (gpu)-> gave loss of 1.034 instead of 0.0380 and could not converge
+		->Asus da=0 baseline Adam lr=0.0001
+		->Turbox baseline AdaBelief but got trash negative loss
+		 ->Lenovo pseudoresnet18 da=1 online(gpu)->RUN BUT process killed when dumping results->will do this on turbox then but results where again negative loss trash but not constant like the ready conformer
+		 ->Lenovo ready_conformer da2 (gpu tf 2.4.1)->gave trash constant negative loss of -9.610e-4
+		->Asus and Turbox baseline with sgd gave constant loss of 0.0379
+		->pseudoresnet34 da2 tf 2.4.1
+		->resnet18 da0 tf 2.0.0 
+		
+
+NOW RUNNING::->Turbox locally baseline da=0 Adam VANILLA(tf 2.4.1 keras 2.4.1) (gpu)
+		 ->Lenovo my-conformer da=0 with lr=0.0001 Adam (gpu tf 2.4.1)
+		 ->Asus baseline da=0 SGD (cpu)
+
+BASLine gives normal results on tf 2.4.1 so channels_last really is no problem
+Will do data augm = 1 on turbox now > siggline pio grigora stin arxh alla den eftase 0.74 opws me da0->akyro EGINE ME ACCDOA FALSE
+
+24/4/2022
+
+Calling my conformer fun (not class) on turbox, da0, weight regulizers from Ko and Adam 0.00002 loss
+Also added extra dense 512 and Dense 32 layer like Zhang
+ 
+For some reason, while tr_loss very low, the SELD score remains the worst (1.00) on adabelief baseline 
+
+Lenovo run a couple of tests with ready cnformer, but still getstable loss 0f 0.0382 or a good loss but on epoch 2 it spirals down to negative trash
+
+now running on lenovo ready conformer with learning rate scheduler
+
+25/4/2022
+
+Turbox->read Zhang and Huang from dcase 2020->they replace gru and use the conformer like an encoder
+Same with Ko but he uses gru as  well on the DOA branch, but i train both sed and doa so i only have one accdoa branch
+
+Will run on turbox my conformer, weight reg and adam with learning rate schedulerBUT will now replace the gru
+I will also run a conformer approach but try the computation on the 60 axis instead of 512
+
+RUNNING:: Turbox ready conformer adabelief 0.0001 scheduler without gru and da0 BUT changed last dimension 512 to 60
+	    Lenovo ready conformer adabelief 0.0001 scheduler without gru da0 15 subepochs
+

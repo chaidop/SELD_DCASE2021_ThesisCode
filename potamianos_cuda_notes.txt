@@ -150,11 +150,44 @@ batch size 4, steps per epoch = 5
 changed conv2d to conv1d in res_conv_identity18 to lower parameters and memory
 
 for conformer::will try to call conformer_fun
-changed colab keras_models.py version to that i run in vienna from windows
+
 TODO:: buy new gpu 
 	look into google colab and if not into the lamda cloud gpu server
 	pytorch !!!!!
 	
-19/4/2022
-	ASUS: baseline trying to implement specaugment in data_generator.py
-	also implement swa (from Ko's IRIS-SELD) in seld.py
+19/04/2022
+
+TRIED SPECAUGMENT ON BASELINE IN UBUNTU ASUS AND ADDED SWA(ensembling weights, maybe not for now) 
+try AdaBelief (https://github.com/IRIS-AUDIO/SELD/blob/main) or adaptive gradient clipping(train2v.py) or BinaryCrossEntropy ->> all in IRIS-SELD
+
+will try adabelief on baseline in cpu google colab
+
+20/4/2022
+i was training on eval dataset
+
+cannot now run tf 2.4.1 and keras 2.4.1 anywhere... gives AttributeError: module 'tensorflow.compat.v2.__internal__' has no attribute 'tf2'
+
+not on anaconda , not on colab not localy not anywhere
+solved by uninstalling keras-nightly, tf-estimator-nightly, tensorflow-estimator and tensorflow-gpu-estimator from pip (another version pakage dependency yay)
+
+NOW managed to locally in turbox make cuda work so now the running procedures are:
+NOW RUNNING::->Turbox locally(not on conda anymore) resnet18 da=2 DEV(gpu)->eval done->later will try the AdaBelief from colab because the custom optimizer cant be saved in checkpointing
+		 ->Google Colab resnet18 da=2 lr=0.003 AdaBELIEF (cpu)
+		 ->Google colab my conformer da=2 (gpu)->checkpointcould not save model corectly, need to renake the conformer with lambda layers (gave gru error that was solved with keras channels_last but when save model is done, it doeas not apply it, so need to remake wohle conformer)
+		 	aLSO USING CONFORMER CLASS AND tf 2.0.0 tf-gpu 2.0.0 keras 2.3.1
+		->Lenovo ready conformer da=2 DEV(gpu)->eval done
+		 ->Asus trying baseline da1(cpu)->
+
+to make locally turbox work, i downloaded cuda 11 instead of 11.1 and to make cupti get recognized, i renamed the cupti64_2020.dll to cupti64_110.dll
+and also copied the ptx.exe from cuda/11.1/bin to cuda/11.0/bin to get rid of SubProcess ended with return code: 4294967295 error
+
+21/4/2022
+
+tURBOX LOCALLY::
+run the resnet18 (with conv2d not the pseudoresnet) and got results i upload to github
+will try and run it again with pseudo
+
+Next: try and run baseline with AdaBelief and lr=0.0003
+
+Asus:: try baseline da1
+Google colab Untitled6->try my conformer da2 with tf 200 keras 231
