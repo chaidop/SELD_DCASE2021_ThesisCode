@@ -109,14 +109,14 @@ def main(argv):
         print('Loading training dataset:')
         
         data_gen_train = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True
+            params=params, split=train_splits[split_cnt]
         )
         if params['model_approach'] == 4:
             data_gen_train2 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True
+            params=params, split=train_splits[split_cnt]
             )
             data_gen_train3 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True
+            params=params, split=train_splits[split_cnt]
             )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
@@ -146,9 +146,9 @@ def main(argv):
         seld_metric = np.zeros((nb_epoch, 5))
 
         #Load the wanted models
-        model1 = load_model(params['model_dir']+'2_vanilla_mic_dev_split6_model.h5'.format(unique_name))
+        model1 = load_model(params['model_dir']+'2_baseline_lstm_mic_dev_split6_model.h5'.format(unique_name))
         model2 = load_model(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
-        
+        print("hey")
     for epoch_cnt in range(nb_epoch):
         start = time.time()
         # predict once per epoch
@@ -162,26 +162,14 @@ def main(argv):
             steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
             verbose=2
         )
-
+        pred = (pred1 + pred2)//2
         if params['is_accdoa']:
-            sed_pred1, doa_pred1 = get_accdoa_labels(pred1, nb_classes)
-            sed_pred1= reshape_3Dto2D(sed_pred1)
-            doa_pred1 = reshape_3Dto2D(doa_pred1)
+            sed_pred, doa_pred = get_accdoa_labels(pred, nb_classes)
+            sed_pred= reshape_3Dto2D(sed_pred)
+            doa_pred = reshape_3Dto2D(doa_pred)
         else:
-            sed_pred1 = reshape_3Dto2D(pred1[0]) > 0.5
-            doa_pred1 = reshape_3Dto2D(pred1[1] if params['doa_objective'] is 'mse' else pred1[1][:, :, nb_classes:])
-        if params['is_accdoa']:
-            sed_pred2, doa_pred2 = get_accdoa_labels(pred2, nb_classes)
-            sed_pred2 = reshape_3Dto2D(sed_pred2)
-            doa_pred2 = reshape_3Dto2D(doa_pred2)
-        else:
-            sed_pred2 = reshape_3Dto2D(pred2[0]) > 0.5
-            doa_pred2 = reshape_3Dto2D(pred2[1] if params['doa_objective'] is 'mse' else pred2[1][:, :, nb_classes:])
-        
-
-        #average the predictions 
-        sed_pred = (sed_pred1 + sed_pred2)//2
-        doa_pred = (doa_pred1 + doa_pred2)//2
+            sed_pred = reshape_3Dto2D(pred[0]) > 0.5
+            doa_pred = reshape_3Dto2D(pred[1] if params['doa_objective'] is 'mse' else pred[1][:, :, nb_classes:])
 
         dcase_output_val_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
         # Calculate the DCASE 2021 metrics - Location-aware detection and Class-aware localization scores
@@ -238,27 +226,14 @@ def main(argv):
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
             verbose=2
         )
-
+        pred_test = (pred_test1+pred_test2)//2
         if params['is_accdoa']:
-            test_sed_pred1, test_doa_pred1 = get_accdoa_labels(pred_test1, nb_classes)
-            test_sed_pred1 = reshape_3Dto2D(test_sed_pred1)
-            test_doa_pred1 = reshape_3Dto2D(test_doa_pred1)
+            test_sed_pred, test_doa_pred = get_accdoa_labels(pred_test, nb_classes)
+            test_sed_pred = reshape_3Dto2D(test_sed_pred)
+            test_doa_pred = reshape_3Dto2D(test_doa_pred)
         else:
-            test_sed_pred1 = reshape_3Dto2D(pred_test1[0]) > 0.5
-            test_doa_pred1 = reshape_3Dto2D(pred_test1[1] if params['doa_objective'] is 'mse' else pred_test1[1][:, :, nb_classes:])
-
-        if params['is_accdoa']:
-            test_sed_pred2, test_doa_pred2 = get_accdoa_labels(pred_test2, nb_classes)
-            test_sed_pred2 = reshape_3Dto2D(test_sed_pred2)
-            test_doa_pred2 = reshape_3Dto2D(test_doa_pred2)
-        else:
-            test_sed_pred2 = reshape_3Dto2D(pred_test2[0]) > 0.5
-            test_doa_pred2 = reshape_3Dto2D(pred_test2[1] if params['doa_objective'] is 'mse' else pred_test2[1][:, :, nb_classes:])
-
-
-        #average the predictions
-        test_sed_pred = (test_sed_pred1 + test_sed_pred2)//2
-        test_doa_pred = (test_doa_pred1 + test_doa_pred2)//2
+            test_sed_pred = reshape_3Dto2D(pred_test[0]) > 0.5
+            test_doa_pred = reshape_3Dto2D(pred_test[1] if params['doa_objective'] is 'mse' else pred_test[1][:, :, nb_classes:])
 
         # Dump results in DCASE output format for calculating final scores
         dcase_output_test_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_test'.format(task_id, params['dataset'], params['mode']))
