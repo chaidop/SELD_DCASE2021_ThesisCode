@@ -199,12 +199,14 @@ class FeatureClass:
 
                 ##### CUSTOM data augmentation that does not change label, only in train dataset
                 # These offline augmentation techniques are applied on the spectograms
+                '''
                 if not self._is_eval and self._data_augm is not 0:
                     was_augmented = was_augmented1 = was_augmented2 = False
                     t_mel_spect = np.reshape(mel_spect, (mel_spect.shape[0], -1, self._nb_channels))
                     t_mel_spect = np.transpose(t_mel_spect, (2,0,1))
+                    print('MEL SIZE', t_mel_spect.shape, mel_spect)
                     if self._data_augm == 1:
-                        feat_augm, was_augmented = SpecAugmentNp()(t_mel_spect)
+                        feat_augm, was_augmented = SpecAugmentNp(n_time_stripes=0)(t_mel_spect)#apply only freq masking
                     elif self._data_augm == 2:
                         feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(t_mel_spect)
                     elif self._data_augm == 3:
@@ -275,6 +277,7 @@ class FeatureClass:
                         if feat is not None:
                             print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
                             np.save(os.path.join(self._feat_dir, '{}_augm2.npy'.format(wav_filename.split('.')[0])), feat)
+                '''
                 #######
 
                 if self._dataset == 'foa':
@@ -293,6 +296,18 @@ class FeatureClass:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
 
                     np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
+                    ##### CUSTOM data augmentation that does not change label, only in train dataset
+                    if not self._is_eval:
+                        if self._data_augm == 2:
+                            feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                        elif self._data_augm == 1:
+                            feat_augm, was_augmented = SpecAugmentNp()(feat)
+                        if was_augmented:
+                            #have a list of the names of files that were augmented, to copy the labels on that index
+                            self.augm_indx = np.append(self.augm_indx, file_name)
+                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat_augm)
+                            print('\t{}: {}_augm, {}'.format(file_cnt, file_name, feat.shape ))
+                    #######
 
                     
 
