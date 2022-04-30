@@ -4,7 +4,7 @@
 ########## CHANGED import keras. ... to import tensorflow.keras....
 from tensorflow import keras
 import pdb
-from keras.layers import Lambda,Bidirectional, Conv2D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
+from keras.layers import Lambda,Bidirectional, Conv2D, Conv1D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D ##CUSTONM CODE (to Add kai AveragePooling)
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
 from keras.layers.recurrent import GRU, LSTM
 from keras.layers.normalization import BatchNormalization
@@ -508,14 +508,14 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         #(60, 512)
         spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
         #(60, 128)
-        spec_cnn = Dense(128, activation = 'relu')(spec_cnn)#i need to lower the dimension cause i got memory error
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)#i need to lower the dimension cause i got memory error 256 for best model
         #(128, 60)
-        spec_cnn = Permute((2, 1))(spec_cnn)
+        #spec_cnn = Permute((2, 1))(spec_cnn)
         for i in range(depth):
             spec_cnn = ConformerBlock(dim = spec_cnn.shape[-1], inputs= spec_cnn)
         print("output conformer ", spec_cnn.shape)
         
-        spec_cnn = Permute((2, 1))(spec_cnn)
+        #spec_cnn = Permute((2, 1))(spec_cnn)
         #(60, 128)
         ###### DENSE LAYERS #########
         spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
