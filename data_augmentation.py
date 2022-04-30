@@ -249,9 +249,10 @@ class SpecAugmentNp(DataAugmentNumpyBase):
         :param x: <(n_channels, n_time_steps, n_features)>: input spectrogram.
         :return: augmented spectrogram.
         """
-        assert x.ndim == 3, 'Error: dimension of input spectrogram is not 3!'
-        n_frames = x.shape[1]
-        n_freqs = x.shape[2]
+        assert x.ndim == 2, 'Error: dimension of input spectrogram is not 3!'
+
+        n_frames = x.shape[0]
+        n_freqs = x.shape[1]
         min_value = np.min(x)
         max_value = np.max(x)
         if self.time_max_width is None:
@@ -272,22 +273,22 @@ class SpecAugmentNp(DataAugmentNumpyBase):
             start_idx = np.random.randint(0, n_frames - dur, 1)[0]
             random_value = np.random.uniform(min_value, max_value, 1)
             if self.n_zero_channels is None:
-                new_spec[:, start_idx:start_idx + dur, :] = random_value
+                new_spec[ start_idx:start_idx + dur, :] = random_value
             else:
-                new_spec[:-self.n_zero_channels, start_idx:start_idx + dur, :] = random_value
+                new_spec[start_idx:start_idx + dur, :] = random_value
                 if self.is_filled_last_channels:
-                    new_spec[-self.n_zero_channels:, start_idx:start_idx + dur, :] = 0.0
+                    new_spec[start_idx:start_idx + dur, :] = 0.0
 
         for i in np.arange(self.n_freq_stripes):
             dur = np.random.randint(1, freq_max_width, 1)[0]
             start_idx = np.random.randint(0, n_freqs - dur, 1)[0]
             random_value = np.random.uniform(min_value, max_value, 1)
             if self.n_zero_channels is None:
-                new_spec[:, :, start_idx:start_idx + dur] = random_value
+                new_spec[ :, start_idx:start_idx + dur] = random_value
             else:
-                new_spec[:-self.n_zero_channels, :, start_idx:start_idx + dur] = random_value
+                new_spec[ :, start_idx:start_idx + dur] = random_value
                 if self.is_filled_last_channels:
-                    new_spec[-self.n_zero_channels:, :, start_idx:start_idx + dur] = 0.0
+                    new_spec[ :, start_idx:start_idx + dur] = 0.0
 
         return new_spec
 
@@ -386,7 +387,7 @@ class RandomShiftUpDownNp(DataAugmentNumpyBase):
     This data augmentation random shift the spectrogram up or down.
     """
     def __init__(self, always_apply=False, p=0.5, freq_shift_range: int = None, direction: str = None, mode='reflect',
-                 n_last_channels: int = 0):
+                n_last_channels: int = 0):
         super().__init__(always_apply, p)
         self.freq_shift_range = freq_shift_range
         self.direction = direction
@@ -394,8 +395,11 @@ class RandomShiftUpDownNp(DataAugmentNumpyBase):
         self.n_last_channels = n_last_channels
 
     def apply(self, x: np.ndarray):
-        
-        n_channels, n_timesteps, n_features = x.shape
+        shape = np.array(1)
+        shape = np.append(shape, x.shape[-2])
+        shape = np.append(shape, x.shape[-1])
+        #shape.append(x.shape)
+        n_channels, n_timesteps, n_features = shape
         if self.freq_shift_range is None:
             self.freq_shift_range = int(n_features * 0.08)
         shift_len = np.random.randint(1, self.freq_shift_range, 1)[0]
@@ -404,6 +408,7 @@ class RandomShiftUpDownNp(DataAugmentNumpyBase):
         else:
             direction = self.direction
         new_spec = x.copy()
+        new_spec = new_spec.reshape(1,new_spec.shape[0], new_spec.shape[1])
         if self.n_last_channels == 0:
             if direction == 'up':
                 new_spec = np.pad(new_spec, ((0, 0), (0, 0), (shift_len, 0)), mode=self.mode)[:, :, 0:n_features]
@@ -416,7 +421,9 @@ class RandomShiftUpDownNp(DataAugmentNumpyBase):
             else:
                 new_spec[:-self.n_last_channels] = np.pad(
                     new_spec[:-self.n_last_channels], ((0, 0), (0, 0), (0, shift_len)), mode=self.mode)[:, :, shift_len:]
+        new_spec = new_spec.reshape(new_spec.shape[1], new_spec.shape[2])
         return new_spec
+
 
 
 #############################################################################
