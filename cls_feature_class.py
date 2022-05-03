@@ -294,10 +294,10 @@ class FeatureClass:
 
                 if feat is not None:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
-
+                    was_augmented = was_augmented1 = was_augmented2 = False
                     np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
                     ##### CUSTOM data augmentation that does not change label, only in train dataset
-                    if not self._is_eval:
+                    if not self._is_eval and self._data_augm > 0:
                         if self._data_augm == 2:
                             feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
                         elif self._data_augm == 1:
@@ -307,9 +307,22 @@ class FeatureClass:
                             self.augm_indx = np.append(self.augm_indx, file_name)
                             np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat_augm)
                             print('\t{}: {}_augm, {}'.format(file_cnt, file_name, feat.shape ))
-                    #######
-
-                    
+                        if self._data_augm == 3:
+                            feat_augm1, was_augmented1 = SpecAugmentNp()(feat)
+                            feat_augm2, was_augmented2 = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                        if was_augmented1:
+                            self.was_augm1 = True
+                            #have a list of the names of files that were augmented, to copy the labels on that index
+                            self.augm_indx = np.append(self.augm_indx, file_name)
+                            np.save(os.path.join(self._feat_dir, '{}_augm1.npy'.format(wav_filename.split('.')[0])), feat_augm1)
+                            print('\t{}: {}_augm1, {}'.format(file_cnt, file_name, feat_augm1.shape ))
+                        if was_augmented2:
+                            self.was_augm2 = True
+                            #have a list of the names of files that were augmented, to copy the labels on that index
+                            self.augm_indx2 = np.append(self.augm_indx2, file_name)
+                            np.save(os.path.join(self._feat_dir, '{}_augm2.npy'.format(wav_filename.split('.')[0])), feat_augm2)
+                            print('\t{}: {}_augm2, {}'.format(file_cnt, file_name, feat_augm2.shape ))
+                    #######      
 
     def preprocess_features(self):
         # Setting up folders and filenames

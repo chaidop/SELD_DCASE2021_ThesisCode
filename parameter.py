@@ -10,7 +10,7 @@ def get_params(argv='1'):
     params = dict(
          #####CUSTOM PARAMETERS ##############
 
-        model_approach=3,  #####shows approach to be taken for seld (1 to run baseline)
+        model_approach=6,  #####shows approach to be taken for seld (1 to run baseline)
         # 0 for baseline
         # 1 for resnet 18
         # 2 for resnet 34
@@ -23,12 +23,12 @@ def get_params(argv='1'):
 
         dconv_kernel_size = 31, ## size of depthwise convolution for conformer approach
         nb_conf = 2,            ## number of conformer layers before SED and DOA separation 
-        
+
         decoder = 0,
         # 0 for bi-gru
         # 1 for lstm
 
-        data_augm = 0,
+        data_augm = 3,
         # 0: None
         # 1: masking
         # 2: random shift up/down
@@ -57,7 +57,7 @@ def get_params(argv='1'):
         hop_len_s=0.02,
         label_hop_len_s=0.1,
         max_audio_len_s=60,
-        nb_mel_bins=64,#original 64
+        nb_mel_bins=128,#original 64
 
         # DNN MODEL PARAMETERS
         is_accdoa=True,             # True: Use ACCDOA output format

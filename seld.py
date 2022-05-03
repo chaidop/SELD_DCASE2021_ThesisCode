@@ -15,6 +15,7 @@ import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+import swa
 
 global history 
 
@@ -142,18 +143,10 @@ def main(argv):
         data_gen_train = cls_data_generator.DataGenerator(
             params=params, split=train_splits[split_cnt], train=True
         )
-        if params['model_approach'] == 4:
-            data_gen_train2 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True
-            )
-            data_gen_train3 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True
-            )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
             params=params, split=val_splits[split_cnt], shuffle=False, per_file=True, is_eval=False
         )
-
         # Collect the reference labels for validation data
         data_in, data_out = data_gen_train.get_data_sizes()
         print('FEATURES:\n\tdata_in: {}\n\tdata_out: {}\n'.format(data_in, data_out))
@@ -163,7 +156,6 @@ def main(argv):
             params['dropout_rate'], params['nb_cnn2d_filt'], params['f_pool_size'], params['t_pool_size'], params['rnn_size'],
             params['fnn_size'], params['doa_objective']))
 
-        
         print('Using loss weights : {}'.format(params['loss_weights']))
         model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
@@ -174,6 +166,10 @@ def main(argv):
                                       decoder = params['decoder'],
                                       dconv_kernel_size = params['dconv_kernel_size'],
                                       nb_conf = params['nb_conf'])
+        # stochastic weight averaging
+        swa_start_epoch = 10
+        swa_freq = 2
+
         # Dump results in DCASE output format for calculating final scores
         dcase_output_val_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
         cls_feature_class.delete_and_create_folder(dcase_output_val_folder)
@@ -225,7 +221,7 @@ def main(argv):
             
             #CUSTOM
             #model.save('model_checkpoint/checkpoint{epoch_cnt:04d}.h5')
-            
+            swa_weights = swa.on_epoch_end(epoch_cnt, model, swa_start_epoch, swa_freq)
             tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
            
             ##CUSTOM plot loss
@@ -329,8 +325,8 @@ def main(argv):
             print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(test_seld_metric[2], test_seld_metric[3]*100))
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
-
-    model.save_weights(model_name)#modified because of memoryerror, it was save instead
+    swa.on_train_end(model, swa_weights)
+    model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))

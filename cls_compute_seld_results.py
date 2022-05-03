@@ -18,13 +18,15 @@ class ComputeSELDResults(object):
         
         # collect reference files
         self._ref_labels = {}
-        for split in os.listdir(self._desc_dir):      
-            for ref_file in os.listdir(os.path.join(self._desc_dir, split)):
-            # Load reference description file
-                gt_dict = self._feat_cls.load_output_format_file(os.path.join(self._desc_dir, split, ref_file))
-                if not self._use_polar_format:
-                    gt_dict = self._feat_cls.convert_output_format_polar_to_cartesian(gt_dict)
-                self._ref_labels[ref_file] = self._feat_cls.segment_labels(gt_dict, self._feat_cls.get_nb_frames())
+        for split in os.listdir(self._desc_dir):   
+            print('Split: {}'.format(split))
+            if split != 'desktop.ini':   
+                for ref_file in os.listdir(os.path.join(self._desc_dir, split)):
+                # Load reference description file
+                    gt_dict = self._feat_cls.load_output_format_file(os.path.join(self._desc_dir, split, ref_file))
+                    if not self._use_polar_format:
+                        gt_dict = self._feat_cls.convert_output_format_polar_to_cartesian(gt_dict)
+                    self._ref_labels[ref_file] = self._feat_cls.segment_labels(gt_dict, self._feat_cls.get_nb_frames())
 
         self._nb_ref_files = len(self._ref_labels)
         print('SELD metrics class: loaded : {} reference files'.format(len(self._ref_labels)))
@@ -144,4 +146,3 @@ if __name__ == "__main__":
 
     # Compute DCASE 2021 results along with room-wise performance
     score_obj.get_consolidated_SELD_results(pred_output_format_files)
-

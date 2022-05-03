@@ -530,10 +530,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     for nb_rnn_filt in rnn_size:
         if decoder == 0 and model_approach is not 3 or 6:
             keras.backend.set_image_data_format('channels_last')
-            spec_rnn = Bidirectional(
-                GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
-                    return_sequences=True),
-                    merge_mode='mul')(spec_rnn)
+            #spec_rnn = Bidirectional(
+            #    GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
+            #        return_sequences=True),
+            #        merge_mode='mul')(spec_rnn)
         elif decoder == 1 and model_approach is not 3 or 6:
             keras.backend.set_image_data_format('channels_last')
             spec_rnn = Bidirectional(
@@ -554,7 +554,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     if is_accdoa:
         model = Model(inputs=spec_start, outputs=doa)
         #CUSTOM added AdaBelief from IRIS-SELD
-        #model.compile(optimizer=AdaBelief(0.003), loss='mse')
+        #model.compile(optimizer=AdaBelief(0.0001), loss='mse', metrics=['accuracy'])
         #model.compile(optimizer=Adam(learning_rate=0.003), loss='binary_crossentropy')
         model.compile(optimizer=Adam(learning_rate=0.0001), loss='mse', metrics=['accuracy'])
     else:

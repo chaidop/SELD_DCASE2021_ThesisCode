@@ -137,3 +137,70 @@ I will also run a conformer approach but try the computation on the 60 axis inst
 RUNNING:: Turbox ready conformer adabelief 0.0001 scheduler without gru and da0 BUT changed last dimension 512 to 60
 	    Lenovo ready conformer adabelief 0.0001 scheduler without gru da0 15 subepochs
 
+
+27/4/2022
+
+the result of the ready conformer adam 0.0001 wreg scheduler is actually the model named my_conformer_da0_adabelief0_0001_nogru_scheduer_wreg_extradenselayer_inverseshape3
+i just named it wrong on run, but the parameters are that i mentioned, not htose in the name
+same goes for models my_conformer_da0_adabelief0_0001_nogru_scheduer_wreg_extradenselayer_inverseshape and my_conformer_da0_adabelief0_0001_nogru_scheduer_wreg_extradenselayer_inverseshape2
+also batch size 16
+
+All confomer implementations where done with only 1 depth of laer conformer
+i will try with 2
+also no lstm or gru where used
+da0
+
+now running: Lenovo base da2+da1
+		 Turbox conformer da0, depth 2 and gru
+		 Asus if i fix swa
+copied the code from seld and keras models from turbox to lenovo
+
+tried to run different freq 16000 and window len 0.01 and 0.2 in asus and it crashed, cannot load ubuntu stuck in grub terminal
+
+28/4/2022
+
+run ready_conformer_depth_da0_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse
+wich i gave the 256 dimension instead of the 60 and it worked...how??->gave best score so far (name: ready_conformer_depth_da0_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse)
+will rty same for 512 and then optimizaion techniques->i had to stop the 512 since it didnt give better results, i am now trying with 512 and no gru(i forgot and had gru enabled)
+Akyro then eixa allaksei tis diastaseis, opote ekane akoma gia 60 me 512 stin prwth diastash(model  ready_conformer_depth_da0_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_512.txt)
+Try again for (60, 512)->it gave constant loss of 0.0379
+
+NOW RUNNING:Turbox ready conformer with 512 dimension no gru-> gave constant
+		Lenovo trying ensembling with res-50 and base->gave bad ressults
+
+have to try ensembling with different head and dim_head on conformer
+mights use 3 diff conformer models and a base-crnn for ensembling
+also use da2 on conformer 256->did it but with dim24 and head4 (ready_head4_dim24_conformer_depth_da2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256) the model is called ready_conformer_depth_da2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256
+
+NOW RUNNING:Turbox ready conformer with 256, head=4, dim=24 dimension no gru->GAVE WORSE RESULTS THAN MORE HEADS (ready_conformer_heads4_dim24_depth_da0_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256 )
+		Lenovo trying ensembling with 3 different conformers, the 256 one, the 2256 with had=4, dim=24, and the 128 one
+
+tried ensembling resnet34 but got error with bigru
+
+maybe my augmentation is not right->it gives worse results with even the baseline ! ->>LOOK INTO IT OR TRY ONLINE
+
+changed tp data augmentation randomshit to take channels=1
+running 256 dim with da2 and randomshift not anged->still worse than da0 so i will change the randomshift to take the feat instead of the mel_spect like i did at first
+
+30/4/2022
+
+FOR FURTHER IMPROVING PERFORMANCE::
+Try Kos SWA with conformer since ensembling not working out also adabelief also change threshold to 0.3 like nguyen
+ALSO test-time augmentation in nguyen https://towardsdatascience.com/test-time-augmentation-tta-and-how-to-perform-it-with-keras-4ac19b67fb4d
+
+run da2 and da1 together, got wose results than da2 sketo (ready_conformer_da21....)
+
+running conformer da1, swa, adabelief 0.003->gave worse results
+
+2/5/2022
+
+random magnitude augm
+also tta (salsa)
+TDA:::https://arxiv.org/pdf/2101.02919.pdf->We use ResNet to extract local shift-invariant
+features. Then Conformer is adopted to learn both local and
+global context representations. We call our acoustic model
+ResNet-Conformer
+
+running adabelief, da2, swa 128 mel bands->ready_conformer_depth_swa_myda2_adabelief0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256 not better results 64 bands (deleted accidentally, but had ER: 0.92 at epoch 9 and 0.75 score
+ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256->gave similar results to best attempt, which was same with da2 and no swa (ready_conformer_depth_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256)
+Will run same but with both augmentations
