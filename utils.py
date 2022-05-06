@@ -32,7 +32,7 @@ class EnsembleFreqMasking(EnsembleMaskingNumpyBase):
     Time and Frequency masking
     """
     def __init__(self, always_apply: bool = False, p: float = 0.5, 
-                 freq_max_width: int = None, n_freq_stripes: int = 1,
+                 freq_max_width: int = 64, n_freq_stripes: int = 1,
                  n_zero_channels: int = None, is_filled_last_channels: bool = True, min_freq: int = 0, max_freq: int = 64):
         """
         :param always_apply: If True, always apply transform.
@@ -56,9 +56,9 @@ class EnsembleFreqMasking(EnsembleMaskingNumpyBase):
         :param x: <(n_channels, n_time_steps, n_features)>: input spectrogram.
         :return: augmented spectrogram.
         """
-        assert x.ndim == 3, 'Error: dimension of input spectrogram is not 3!'
-        n_frames = x.shape[1]
-        n_freqs = x.shape[2]
+        assert x.ndim == 4, 'Error: dimension of input spectrogram is not 3!'
+        n_frames = x.shape[2]
+        n_freqs = x.shape[3]
         min_value = self.min_freq
         max_value = self.max_freq
 
@@ -73,6 +73,6 @@ class EnsembleFreqMasking(EnsembleMaskingNumpyBase):
             #gia to 2o model: 6-18 kHZ or 16-48 mel-bins
             #gia ti 3o model: 12-24 kHz or 32-64 mel-bins
             start_idx = min_value[i]
-            new_spec[:, :, start_idx:start_idx + dur] = 0.0
+            new_spec[:,:, :, start_idx:start_idx + dur] = 0.0
 
         return new_spec
