@@ -154,7 +154,108 @@ for conformer::will try to call conformer_fun
 TODO:: buy new gpu 
 	look into google colab and if not into the lamda cloud gpu server
 	pytorch !!!!!
-	
+13/4/2022
+
+dont knpw why but my latest code did not upliad to git
+and now i have an old commit
+i m gonna kill myself now
+
+i switched res_conv18 the last 2 conv layers to take filter f2 instead of f1
+same on res_identity18
+also added a maxpooling layer every end of stage except stage 4
+6 million params
+now i will attempt conv2d->conv1d in res_identity18
+
+now for some reason i get the CUBLAS_STATUS_NOT_INITIALIZED.... need to revert back... wtf
+
+commit that worked without the error :d447a573d2c75c236e9a82a403f2f4bf9c17950c 
+i reverted back to this and changed the cls_compute_seld_results, cls_feature_class and keras_models to the most recent commit with the pseudoresnet
+keras_models code seems to be causing the error
+
+REMEMBER TO MANUALLY SUBMIT TO GITHUB FROM NOW ON
+
+next:: TRY AND DEBUG CONFORMER
+
+changed num_head = 4 and dim = 32 from 8 and 64 respectively
+also changed batch_size to 2 and it runs!
+but it fails at the end with error::: 
+Got 0 inputs for equation "...HNO,...HMO->...HNM", expecting 2
+
+FOUND ERROR:: For CUBLAS_STATUS_NOT_INITIALIZED::
+In keras_models i have this on top:
+config = tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True))
+sess = tf.compat.v1.Session(config=config)
+
+but it does not work if i have this instead:
+sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+
+so in the code that i had the 2nd thing instead of the 1st, it gave error CUBLAS_STATUS_NOT_INITIALIZED
+
+14/4/2022
+
+Fixed the Got 0 inputs for equation "...HNO,...HMO->...HNM", expecting 2
+by changing the scaled_dot_product to an old version that used tf.matmul
+instead of tf.einsum
+
+wait, keras has MHSA ready iimplemented, if mine doersnt work i wil use that
+
+15/4/2022
+
+the conformer did run but gave no improvement, constant 0.0380 loss in 30 epochs...
+not sure why but i changed code to 2d inputs for conformer
+
+also in asus laptop, in google colab, i try and run a ready conformer_tf from github:
+https://github.com/Rishit-dagli/Conformer/blob/9a89d28d2071d68dc6d7745747ff40c89bf85393/conformer_tf/
+
+new gpu?? 
+or just replace attention code with the github above->>did this, replaced my MHSA with the Attention layer, cause the whole conformer of the github needs some tinkering(which im trying in colab)->no improvement
+
+if conformer does not work, just try parallel parameter sharing or another network
+
+LOOK INTO ATTENTION AGAIN alliws de tha katalavw ti paei lathos
+changed all classes from the ready conformer to def
+try again with tensorflow ready github conformer(using classes) and look to change onlythe load_model in keras_models.py->make it import from tf not keras->i need to do this to look into checkpointing, i dont think it can save weights if it uses def instead of a class layer
+
+also installed anaconda environment but deactivated it->>do not need it currently(since cuda thank god works with tensorflow natively) but usefull->>If i need in future, i already have anaconda installed, just need to create new venvs following this link:
+https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
+
+17/4/2022
+
+after anaconda i get:
+failed call to cuInit: CUDA_ERROR_UNKNOWN: unknown error
+
+deactivated environment and deleted and reestarted now it works
+(still get the (base) venv in the left side of the terminal command line)
+
+LOOK TO CHANGE THE EINSUM!!
+
+18/4/2022
+
+looking into tensorboard to visualize why resnet18 stays the same loss (and conformer)
+
+also need to look into checkpoints!!
+for some reason running resnet18 and rsnet34 in ubuntu lenovo takes 2200 secs(pseudoresnet), while it took 500 before....(but gives -7.000e-4 los wtf)
+
+running resnet18 data augmented (taken from main github,real resnet i trained in vienni)on turbox gives constant loss
+also same for google colab (taken from ubuntu pseudoresnet)
+
+uncommented from tensorflow wimport keras in keras_models.py
+Trying to use old positional embedding (mine) since maybe i need dimensions of rel_pos_emb
+to be (b h d r(n)) not ( n r d )
+Did not use old positional embedding, just added a np.newaxis on rel_pos_emb
+to have a batch dimension = 1 (b n r d)
+now i changed all einsum to matmul nut get MemoryError on first epoch when it tries to save the model on seld.py
+->>solved by adding MaxpoolLayer before conformer->seq_len was 300 i added maxpool layer with poolsize=(5,4) and made it to seq len = 60
+ runnning ready-conformer for 4 batch size and data augm == 2(RandomShift)
+ 
+ Also tried to implement checkpoint in google colab( so in my drive's files)
+ which also has the latest ubuntu pseudonet verrion for resnet18
+ will try and run pseudoresnet18 in colab
+ 
+DO::TRY PYTORCH IN A CUDA ENVIRONMENT FOR CONFORMER FROM lucidreams/github->created one here in lenovo ubuntu, just need to test it
+-Try pseudonet in turbox in case loss stays the same
+
+ALSO if memory runs out, try and add seld_feat_labels to external hard drive aand link them to project via symlinks(serafeim advice)	
 19/04/2022
 
 TRIED SPECAUGMENT ON BASELINE IN UBUNTU ASUS AND ADDED SWA(ensembling weights, maybe not for now) 
