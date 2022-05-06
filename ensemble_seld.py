@@ -18,6 +18,38 @@ import matplotlib.pyplot as plt
 import matplotlib
 from keras.models import load_model
 
+global history 
+
+import tensorflow
+import math
+
+sd=[]
+class LossHistory(tensorflow.keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = [1,1]
+
+    def on_epoch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        sd.append(step_decay(len(self.losses)))
+        print('lr:', step_decay(len(self.losses)))
+
+history=LossHistory()
+import tensorflow
+
+# learning rate schedule
+def step_decay(losses):
+    print('decay ')
+    if float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
+        print('changed')
+        lrate=0.0001*1/(1+0.01*len(history.losses))
+        momentum=0.8
+        decay_rate=2e-6
+        return lrate
+    else:
+        print('hist loss ',history.losses[-1])
+        lrate=0.0001
+        return lrate
+lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
 def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred, _doa_pred):
     '''
     Write the filewise results to individual csv files
@@ -111,13 +143,6 @@ def main(argv):
         data_gen_train = cls_data_generator.DataGenerator(
             params=params, split=train_splits[split_cnt]
         )
-        if params['model_approach'] == 4:
-            data_gen_train2 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt]
-            )
-            data_gen_train3 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt]
-            )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
             params=params, split=val_splits[split_cnt], shuffle=False, per_file=True, is_eval=False
@@ -146,11 +171,39 @@ def main(argv):
         seld_metric = np.zeros((nb_epoch, 5))
 
         #Load the wanted models
-        model1 = load_model(params['model_dir']+'2_baseline_lstm_mic_dev_split6_model.h5'.format(unique_name))
-        model2 = load_model(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
+        
+        model1 = model2 = model3 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
+                                      model_approach=0,
+                                      depth = params['nb_conf'],
+                                      decoder = params['decoder'],
+                                      dconv_kernel_size = params['dconv_kernel_size'],
+                                      nb_conf = params['nb_conf'])
+        
+        print('hey1')
+        model1.load_weights(params['model_dir']+'2_lowfreq_base_da1_mic_dev_split6_model.h5')
+        print('done')
+
+        """
+        model2 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
+                                      model_approach=2,
+                                      depth = params['nb_conf'],
+                                      decoder = 0,
+                                      dconv_kernel_size = params['dconv_kernel_size'],
+                                      nb_conf = params['nb_conf'])
+        #model2.load_weights(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
         print("hey")
+        """
+        model2.load_weights(params['model_dir']+'2_midfreq_base_da1_mic_dev_split6_model.h5')
+        model3.load_weights(params['model_dir']+'2_topfreq_base_da1_mic_dev_split6_model.h5')
     for epoch_cnt in range(nb_epoch):
         start = time.time()
+        
         # predict once per epoch
         pred1 = model1.predict_generator(
             generator=data_gen_val.generate(),
@@ -162,7 +215,12 @@ def main(argv):
             steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
             verbose=2
         )
-        pred = (pred1 + pred2)//2
+        pred3 = model3.predict_generator(
+            generator=data_gen_val.generate(),
+            steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
+            verbose=2
+        )
+        pred = (pred1 + pred2 +pred3)/3
         if params['is_accdoa']:
             sed_pred, doa_pred = get_accdoa_labels(pred, nb_classes)
             sed_pred= reshape_3Dto2D(sed_pred)
@@ -226,7 +284,12 @@ def main(argv):
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
             verbose=2
         )
-        pred_test = (pred_test1+pred_test2)//2
+        pred_test3 = model3.predict_generator(
+            generator=data_gen_test.generate(),
+            steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+            verbose=2
+        )
+        pred_test = (pred_test1+pred_test2 + pred_test3)/3
         if params['is_accdoa']:
             test_sed_pred, test_doa_pred = get_accdoa_labels(pred_test, nb_classes)
             test_sed_pred = reshape_3Dto2D(test_sed_pred)
@@ -250,7 +313,7 @@ def main(argv):
             print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(test_seld_metric[2], test_seld_metric[3]*100))
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
-
+    plt.show()
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))

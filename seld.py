@@ -15,7 +15,6 @@ import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
-import swa
 
 global history 
 
@@ -141,12 +140,21 @@ def main(argv):
         print('Loading training dataset:')
         
         data_gen_train = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True
+            params=params, split=train_splits[split_cnt], train=True, ensemble= 3
         )
+        
+        if params['model_approach'] == 4:
+            data_gen_train2 = cls_data_generator.DataGenerator(
+            params=params, split=train_splits[split_cnt], train=True, ensemble = 2
+            )
+            data_gen_train3 = cls_data_generator.DataGenerator(
+            params=params, split=train_splits[split_cnt], train=True, ensemble = 3
+            )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
             params=params, split=val_splits[split_cnt], shuffle=False, per_file=True, is_eval=False
         )
+        
         # Collect the reference labels for validation data
         data_in, data_out = data_gen_train.get_data_sizes()
         print('FEATURES:\n\tdata_in: {}\n\tdata_out: {}\n'.format(data_in, data_out))
@@ -156,6 +164,7 @@ def main(argv):
             params['dropout_rate'], params['nb_cnn2d_filt'], params['f_pool_size'], params['t_pool_size'], params['rnn_size'],
             params['fnn_size'], params['doa_objective']))
 
+        
         print('Using loss weights : {}'.format(params['loss_weights']))
         model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
@@ -166,10 +175,6 @@ def main(argv):
                                       decoder = params['decoder'],
                                       dconv_kernel_size = params['dconv_kernel_size'],
                                       nb_conf = params['nb_conf'])
-        # stochastic weight averaging
-        swa_start_epoch = 10
-        swa_freq = 2
-
         # Dump results in DCASE output format for calculating final scores
         dcase_output_val_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
         cls_feature_class.delete_and_create_folder(dcase_output_val_folder)
@@ -210,6 +215,26 @@ def main(argv):
             #cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                             # save_weights_only=True,
                                                             # verbose=1,save_freq='epoch')
+            model2 = model3 = model
+            if params['model_approach'] == 40:
+                
+                # train once per epoch
+                hist = model2.fit_generator(
+                    generator=data_gen_train2.generate(),
+                    steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
+                    epochs=params['epochs_per_fit'],
+                    verbose=2,
+                    callbacks=[history,lrate]
+                )
+                # train once per epoch
+                hist = model3.fit_generator(
+                    generator=data_gen_train3.generate(),
+                    steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
+                    epochs=params['epochs_per_fit'],
+                    verbose=2,
+                    callbacks=[history,lrate]
+                )
+
             # train once per epoch
             hist = model.fit_generator(
                 generator=data_gen_train.generate(),
@@ -221,7 +246,7 @@ def main(argv):
             
             #CUSTOM
             #model.save('model_checkpoint/checkpoint{epoch_cnt:04d}.h5')
-            swa_weights = swa.on_epoch_end(epoch_cnt, model, swa_start_epoch, swa_freq)
+            
             tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
            
             ##CUSTOM plot loss
@@ -230,19 +255,34 @@ def main(argv):
             history_dict = hist.history
             print(history_dict.keys())
             # summarize history for loss
+            matplotlib.use('TkAgg')
             plt.plot(hist.history['loss'])
             plt.title('model loss')
             plt.ylabel('loss')
             plt.xlabel('epoch')
             plt.legend(['train', 'test'], loc='upper left')
-            plt.show()
+
+            
             # predict once per epoch
             pred = model.predict_generator(
                 generator=data_gen_val.generate(),
                 steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
                 verbose=2
             )
-
+            if params['model_approach'] == 40:
+                # predict once per epoch
+                pred2 = model2.predict_generator(
+                    generator=data_gen_val.generate(),
+                    steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
+                    verbose=2
+                )
+                # predict once per epoch
+                pred3 = model3.predict_generator(
+                    generator=data_gen_val.generate(),
+                    steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
+                    verbose=2
+                )
+                #pred = (pred + pred2 + pred3)//3
             if params['is_accdoa']:
                 sed_pred, doa_pred = get_accdoa_labels(pred, nb_classes)
                 sed_pred = reshape_3Dto2D(sed_pred)
@@ -276,7 +316,7 @@ def main(argv):
             )
             if patience_cnt > params['patience']:
                 break
-
+        
         print('\nResults on validation split:')
         print('\tUnique_name: {} '.format(unique_name))
         print('\tSaved model for the best_epoch: {}'.format(best_epoch))
@@ -294,12 +334,27 @@ def main(argv):
         )
         
         print(unique_name)
+
         #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
         pred_test = model.predict_generator(
             generator=data_gen_test.generate(),
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
             verbose=2
         )
+        if params['model_approach'] == 40:
+            #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
+            pred_test2 = model2.predict_generator(
+                generator=data_gen_test.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            )
+            pred_test3 = model3.predict_generator(
+                generator=data_gen_test.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            )
+            #pred_test = (pred_test + pred_test2 + pred_test3)//3
+
         if params['is_accdoa']:
             test_sed_pred, test_doa_pred = get_accdoa_labels(pred_test, nb_classes)
             test_sed_pred = reshape_3Dto2D(test_sed_pred)
@@ -325,8 +380,9 @@ def main(argv):
             print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(test_seld_metric[2], test_seld_metric[3]*100))
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
-    swa.on_train_end(model, swa_weights)
-    model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
+    plt.show()
+    model.save_weights(model_name)#modified because of memoryerror, it was save instead
+    model.save(model_name + 'model')
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))

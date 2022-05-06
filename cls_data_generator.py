@@ -9,12 +9,13 @@ from IPython import embed
 from collections import deque
 import random
 from data_augmentation import *
+from keras_model import ensemble
 from utils import *
 
 
 class DataGenerator(object):
     def __init__(
-            self, params, split=1, shuffle=True, per_file=False, is_eval=False, train=False
+            self, params, split=1, shuffle=True, per_file=False, is_eval=False, train=False, ensemble = 0
     ):
         self._per_file = per_file
         self._is_eval = is_eval
@@ -52,6 +53,7 @@ class DataGenerator(object):
         #else if it is for predict do not augment
         self.train = train
         self.model_approach = params['model_approach']
+        self.ensemble = ensemble
 
         if self._per_file:
             self._nb_total_batches = len(self._filenames_list)
@@ -241,17 +243,22 @@ class DataGenerator(object):
                     feat = np.transpose(feat, (0, 3, 1, 2))
                     ##CUSTOM if ensemble method of 3 freq is used 
                     #then generate 3 feat instead of  and 3 respective labels
+                    temp_feat_full = np.zeros((feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
                     if self.model_approach == 4:
-                        feat1 = EnsembleFreqMasking(min = [32], max = [64])(feat)
-                        feat2 = EnsembleFreqMasking(min = [0, 32], max = [16, 64])(feat)
-                        feat3 = EnsembleFreqMasking(min = [0], max = [32])(feat)
-
-                        feat = np.concatenate(feat1, feat2, feat3)
-
+                        if self.ensemble == 1:
+                            feat1, was_augm = EnsembleFreqMasking(min_freq= [32], max_freq=  [64])(feat)
+                            temp_feat_full = feat1
+                        elif self.ensemble == 2:
+                            feat2, was_augm = EnsembleFreqMasking(min_freq = [0, 32], max_freq = [16, 64])(feat)
+                            temp_feat_full = feat2
+                        elif self.ensemble == 3:
+                            feat3, was_augm = EnsembleFreqMasking(min_freq = [0], max_freq = [32])(feat)
+                            temp_feat_full = feat3
+                        feat = temp_feat_full
                     
                     ##CUSTOM add a data augmented feature in the array
                     #for each batch segment(64 segments) add that to specaugm
-                    if self.data_augm is not 0 and self.train:
+                    if self.data_augm > 0 and self.data_augm is not 4 and self.train:
                         temp_feat_full = np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
                         temp_label_full = np.zeros((2*feat.shape[0], self._label_seq_len, self._label_len))
                         #reset index array 
@@ -277,9 +284,12 @@ class DataGenerator(object):
                     label = self._split_in_seqs(label, self._label_seq_len)
                      ##CUSTOM if ensemble method of 3 freq is used 
                     #then generate 3 feat instead of  and 3 respective labels
-                    if self.model_approach == 4:
-                        label = np.concatenate(label, label, label)
-                    if self.data_augm is not 0 and self.train:
+                    #if self.model_approach == 4:
+                    #    temp_label_full = np.zeros((label.shape[0],self._label_seq_len, self._label_len))
+                        #for k in range(3):
+                        #    temp_label_full[k,:,:, :] = label
+                        #label = temp_label_full
+                    if self.data_augm > 0 and self.data_augm is not 4 and self.train:
                         counter = 0
                         for j in range(label.shape[0]):
                             temp_label_full[j,:,:] = label[j,:,:]
@@ -292,7 +302,7 @@ class DataGenerator(object):
                                     break
                         label = temp_label_full[:label.shape[0]+len(self.augm_indx)-1,:,:]
                         
-                    if self._is_accdoa:
+                    if self._is_accdoa:     
                         mask = label[:, :, :self._nb_classes]
                         mask = np.tile(mask, 3)
                         label = mask * label[:, :, self._nb_classes:]
