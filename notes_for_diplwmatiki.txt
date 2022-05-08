@@ -1,0 +1,174 @@
+Chapter 1 :
+
+Bai: GRU is used after the Resnet
+	for catching temporal relationship of acoustic features.
+
+	m log-Mel spectrogram as acoustic features, and
+	the GCC-PHAT as the spatial feature input to network
+
+	From another point of view, sound recognition is an image
+	recognition process. Therefore, many network architectures used
+	for machine vision can be used for reference (ResNet), and sound is a signal
+	with temporal context, so many networks used for natural language
+	processing can also be used for reference (Transformers).
+Huang:  non-targeted sound events included in
+	audio samples. These superimposed interference noises make discerning and localizing movable sounds events becomes more challenging.
+	Mel-spectograms are a  feature-based solution requires separate human efforts and
+	is constrained by different parameter settings, e.g. window size,
+	hop size, or filter bank type, which in turn influences the design
+	of model architectures and is considered a sub-optimal solution
+   audio-based end-to-end approaches
+
+	(On the idea of training on the raw audio): input size of raw audio is much larger
+	than human-extracted features, which is more difficult to generalize
+	
+	SED and DOA may have some common features that are
+	better preserved in raw audio form. Thus, we follow the design
+	of the baseline system [13] to jointly train the SED and DOA in a
+	shared network and adopt the activity-coupled Cartesian DOA vector (ACCDOA) representation [22] as a single target to predict the
+	SED and DOA simultaneously
+	
+Lee:In a practical situation, sound of an event is transmitted to microphones
+	from the corresponding source at a specific direction. From this 
+	fact, it is reasonable to combine detection and localization by estimating the temporal and spatial location of the event. Therefore, it 
+	is worthwhile to study SED and DoA together	
+	
+	The joint learning is adopted to avoid the data association
+	problem between the predicted sound events and the estimated 
+	DoAs with separated SED and DoA estimation
+
+	The SED is performed with a multi-label classification task and 
+	estimates which event exists for each frame while the DoA estimate is obtained in three-dimensional coordinates with a multioutput regression task.
+	
+	The log-mel spectrogram extracted from input audio data is used as input features for SED, and intensity vectors 
+	are additionally extracted as input features for DoA estimation
+	
+Parrish:
+		 Historically, sound event detection and localization have been
+		accomplished using signal processing and tracking algorithms such
+		as the TRAMP algorithm that utilizes a voice-activity detector an
+		
+		end-to-end trained
+		networks have been the top performing approaches to previous
+		DCASE SELD tasks including an ensemble of CRNNs in 2019 [4]
+		and an ensemble of multiple deep neural networks in 2020 [
+Chapter 3:
+Bai: (in resnets) The residual block introduced can make the deep network have a better convergence effect.
+
+	It can be seen that data enhancement can only improve the performance
+	of the model to a certain extent
+	
+	Some augmentation techniqes worsened the baseline, but optimized the resnet!!->try da on resnet
+	
+Huang: transformer can be used to extract long sequence dependencies, and
+	convolution is suitable for refining local features.
+
+	Data augmentation is an effective way to improve the model generalization and prevent overfitting problem. 
+	
+Ko: To prevent shrinkage in time-domain, strides (in convolution layer) were not set in time axis
+	and only frequency dimension was allowed to set strides to a value,
+	greater than one.
+	i think he performs conv on the last dimension (16) and not the first like me-> he has channels_last
+	
+	(For ensemble) methods can be divided into two groups; intra-model level (bDNN, SWA)
+	and inter-model level (simple average predictions were used. Each model outputs a
+	prediction per an audio sample and these outputs were averaged to
+	form the final prediction.) ensemble methods
+	
+	Used two models to make ensembles The two model structures share
+	the same model configuration and the only difference between them
+	is whether pooling size in frequency axis in the first convolutional
+	layer is one or two.
+	
+	So in his, input is (300, 64, 7) and after convolution (60, Dfreq, 32)
+	So what is Dfreq? it depends on whether or not the pooling of the 1st stage has 1 or 2 in the 
+	dimensions, which depends of his two models he is using. If pooling is 1, it is 64 if it is 2 it is 32 (i think)
+	so he has channels_last and the pooling happens on the first two dimensions (time and freq, poolsize=[5,1 or 2])
+	and conv happens on the channel dimension (7 to 32)->again just speculating
+	So i do the same calculations on the same channels, so it all ok
+	
+	He created different models by changing the hyperparameters
+
+Lee: (In joint learning) some features will be trained for SED (or DoA), and then it will 
+	be difficult to learn for DoA (or SED). In this report, unlike the 
+	baseline model, we obtain each feature sequence for SED or DoA
+	using CNN layers in parallel. However, features for the two models should be associated because the two tasks are directly related.
+	Therefore, we use the parameter-sharing method in [3] that exchanges intermediate features in the CNN layers for the SED and 
+	DoA	->also for further improvement, use cross-modal attention (CMA) in transformer 
+	decoder layers to learn the fused information.
+	
+	The embedding process consists of CNN blocks. Although we 
+	have also tried embeddings with the LSTM or transformer encoder, nothing performed better than the CNN
+	
+	the CMA module in the DoA stream (CMA-1)
+	takes the DoA embedding sequence as a query vector and the SED 
+	embedding sequence as a key and value vector for the multi-head 
+	scale dot production attention.
+	
+	Serial prediciont
+	
+Navajo Alcajar: squeeze-excitation technique with residual (like huang) in the convolutional part of the network
+
+				use of rate scheduler: if the performance of the system is not improved
+				within 15 epochs, the learning rate decreases by a factor of 0.5.
+				
+Park: Recently, Vision Transformer (ViT) [7, 8] using only pure
+		Transformers for image understanding has been introduced. The
+		outstanding performance of ViT is starting to ask whether CNNs
+		are still essential in many applications. Since then, research on
+		Transformers replacing CNNs has become a trend in various fields.
+		The Audio Spectrogram Transformer (AST) [9] and Keyword Transformer [10] have been introduced as the first attempts to replace
+		CNNs with Transformers in audio understanding. 
+		
+		transfer learning by averaging the weights from ViT
+		
+		test data augmentation
+		
+		dynamic threshold
+		
+		The input time window for our system is 2 seconds. We slide this
+		window with a small hop size to create many overlapped results and
+		average these results during the inference
+		
+		rate scheduler: After 40 epochs, the learning rate decreases by a factor
+		of 0.8 per epoch. 
+		
+		We apply Stochastic Weight Averaging (SWA)
+		[18] to the last 10 epochs for better results
+		
+Parrish: We implement a network with successive blocks of multiscale filters to discriminate and extract overlapping classes with different spectral characteristics. We also implement an output format
+		and permutation invariant training loss that enable the network to
+		detect, classify, and localize multiple instances of the same class
+		simultaneously
+		
+		The network takes as input log magnitude spectral representations of the acoustic time-series, along with
+		corresponding intensity vector representations, and outputs class
+		confidence and DOA estimates at 100 ms intervals
+		
+		Network detects up to 2 instances of the same class
+		
+		Due to the high degree of polyphony
+		(multiple sound sources transmitting jointly) in the data, we design
+		the network to operate at multiple time/frequency scales throughout
+		and to carry this multi-scale operation through the network. Our intuition in doing this is that to detect, classify, and localize multiple
+		sound sources simultaneously, the model must recognize spectral
+		content at different scales for different classes, and then filter the
+		corresponding frequencies in the intensity vector representation to
+		estimate DOA.
+		
+		everal successive layers of neural architecture search (NAS) [6] and pyramid scene
+		parsing blocks [7] before being processed by a multi-headed self-attention layer (MHSA) [8] that outputs to three parallel dense
+		layers to predict output detections and DOA coordinates for each
+		class in cartesian coordinates->uses 3 foa for 3 simultaneous predictions like Lee
+=============================== WHAT TO TRY ===============================
+APPROACHES: Bai uses Resnet34 with different SED and DOA branch->try with different SED and DOA branch
+Huang uses Squeeze-Excitation block and modified Residual block
+Ko makes use of a lot of post processing techniques and ensembles AND ALSO USES DIFFERENT DOA AND SED BRANCH
+Lee different branches with parameter sharing and serial prediciton->use 3 fc output layers to have up to 3 predictions
+Naranjo Alcajar uses squeeze excitation technique with p=1
+Park uses separate sed and doa branches. Also test data augmentation like Nguyen and dynamic threshold like Ko->maybe also look into transfer learning
+Parrish jointly learns teh seld and has 3 fc like Lee
+
+search music separation
+
+neural architecture search and transfer learning

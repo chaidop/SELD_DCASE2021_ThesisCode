@@ -1,0 +1,10 @@
+Diavase kai to notes_for diplwmatiki.txt
+
+Resnet 34 gru and da1+2
+Resnet and conformer joint model
+Resnet + Conformer ensemble
+
+Adaptive grad clipping and test time augment
+3 FC out layers
+
+NAS and separate branch learning
