@@ -110,24 +110,26 @@ def res_identity18(x, filters):
     x_skip = x
     # copy tensor to variable called x_skip
     temp1, temp2 = x.shape[-2], x.shape[-1]
-    print(temp2, temp1)
+    print(temp1, temp2)
     ##reshape for 1d conv
-    #(64, 60, 16)->(60, ...)
-    x = K.permute_dimensions(x, (0,2,3,1))
-    x = Reshape((x.shape[-3]*x.shape[-2], x.shape[-1]))(x)
-    
+    #(64, 60, 16)->(60, 16, 64), cause conv1d works on last dim
+    x = Permute((2,3,1))(x)
+    print(x)
+    #x = Reshape((x.shape[-3],x.shape[-2]*x.shape[-1]))(x)
+
     print("xskip ",x_skip)
     f1, f2 = filters
     # Layer 1
     x = Conv1D(f1, 3, padding = 'same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
+    print(x)
     # Layer 2
     x = Conv1D(f2, 3, padding = 'same')(x)
     x = BatchNormalization()(x)
-
+    print(x)
     
-    x = Reshape((temp1, temp2, x.shape[-1]))(x)
+    #x = Reshape((temp1, temp2, x.shape[-1]))(x)
     x = Permute((3,1,2))(x)
     # Add Residue
     x = Add()([x, x_skip])
@@ -200,7 +202,7 @@ def res_conv18(x, s, filters):
 def resnet34(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
     # 1st stage
     # here we perform maxpooling, see the figure above
-    print("hello\n")
+    print("hello 34\n")
     #print(spec_c_cnn)
     # frm here on only conv block and identity block, no pooling
     print("\n############ STAGE 1 ##############\n")
@@ -351,7 +353,7 @@ def resnet50(input_im):
 #@cuda.jit  
 def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_pool_size,
               rnn_size, fnn_size, weights, doa_objective, is_accdoa,
-              model_approach, depth, decoder, dconv_kernel_size, nb_conf): ####### CUSTOM CODE
+              model_approach, depth, decoder, dconv_kernel_size, nb_conf, simple_parallel): ####### CUSTOM CODE
 
     #tf.config.experimental.list_physical_devices('GPU')
     #tf.debugging.set_log_device_placement(True)
@@ -368,7 +370,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     #print(spec_c_cnn)
     ###### end #####
     #spec_cnn = ZeroPadding2D(padding=(2, 2))(spec_cnn)
-    if model_approach == 0 or 4:
+    if model_approach == 0 or model_approach == 4:
         for i, convCnt in enumerate(f_pool_size):
             spec_cnn = Conv2D(filters=nb_cnn2d_filt, kernel_size=(3, 3), padding='same')(spec_cnn)
             spec_cnn = BatchNormalization()(spec_cnn)
@@ -376,10 +378,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
             spec_cnn = MaxPooling2D(pool_size=(t_pool_size[i], f_pool_size[i]))(spec_cnn)
             spec_cnn = Dropout(dropout_rate)(spec_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        print('model 0')
 
     ##### RESNET50 IMPLEMENTATION ##########
     if model_approach == 1 or model_approach == 2:
-        keras.backend.set_image_data_format('channels_first')
         # 1st stage
         # here we perform maxpooling, see the figure above
         x = spec_cnn
@@ -389,7 +391,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         x = BatchNormalization()(x)
         print(x)
         x = Activation('relu')(x)
-        print(x)
+        print('relu',x)
         x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
         print(x)
         spec_cnn = x
@@ -399,12 +401,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         elif model_approach == 2:
             spec_cnn = resnet34(t_pool_size,f_pool_size,spec_cnn, nb_cnn2d_filt)
         #added maxpool for reshaping output
-        #spec_cnn = Permute((2, 1, 3))(spec_cnn)
-        #print(spec_c_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
         #print(spec_c_cnn)
         ##need to pool to bring sequence to (60,64,2) dimension(seq-len, mel-bands, idk(??))
-        spec_cnn = AveragePooling2D(pool_size=(4,6), padding='same')(spec_cnn)
+        spec_cnn = AveragePooling2D(pool_size=(1,6), padding='same')(spec_cnn)
         print("pool ",spec_cnn)
         
     if model_approach == 3:
@@ -688,7 +688,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_rnn3 = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn3)
         for nb_rnn_filt in rnn_size:
             print("FUEGOOOOOOOOOOOOOOOOO ",nb_rnn_filt)
-            if decoder == 0 and model_approach is not 3 or 6:
+            if decoder == 0 and (model_approach is not 3 or model_approach is not 6):
                 keras.backend.set_image_data_format('channels_last')
                 spec_rnn1 = Bidirectional(
                 GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
@@ -703,7 +703,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
                     return_sequences=True),
                     merge_mode='mul')(spec_rnn3)
                 
-            elif decoder == 1 and model_approach is not 3 or 6:
+            elif decoder == 1 and (model_approach is not 3 or model_approach is not 6):
                 keras.backend.set_image_data_format('channels_last')
                 spec_rnn1 = Bidirectional(LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                     return_sequences=True),
@@ -773,17 +773,18 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
                 exit()
         model.summary()
     else:
+        
         spec_rnn = Reshape((data_out[-2] if is_accdoa else data_out[0][-2], -1))(spec_cnn)
         for nb_rnn_filt in rnn_size:
             print("FUEGOOOOOOOOOOOOOOOOO ",nb_rnn_filt)
-            if decoder == 0 and model_approach is not 3 or 6:
+            if decoder == 0 and (model_approach is not 3 or model_approach is not 6):
                 keras.backend.set_image_data_format('channels_last')
                 spec_rnn = Bidirectional(
                 GRU(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                     return_sequences=True),
                     merge_mode='mul')(spec_rnn)
                 
-            elif decoder == 1 and model_approach is not 3 or 6:
+            elif decoder == 1 and (model_approach is not 3 or model_approach is not 6):
                 keras.backend.set_image_data_format('channels_last')
                 spec_rnn = Bidirectional(LSTM(nb_rnn_filt, activation='tanh', dropout=dropout_rate, recurrent_dropout=dropout_rate,
                     return_sequences=True),
@@ -793,13 +794,36 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         doa = spec_rnn
         #Kos sed cofnormer
         #spec_rnn = Conformer_fun( spec_rnn, dconv_kernel_size=7, num_heads=2 , dim_head=6)
-        for nb_fnn_filt in fnn_size:
-            doa = TimeDistributed(Dense(nb_fnn_filt))(doa)
-            doa = Dropout(dropout_rate)(doa)
-        print(spec_cnn)
-        doa = TimeDistributed(Dense(data_out[-1] if is_accdoa else data_out[1][-1]))(doa)
-        doa = Activation('tanh', name='doa_out')(doa)
-        print(spec_cnn)
+        if simple_parallel == True:
+            x_output = TimeDistributed(Dense(data_out[-1], kernel_initializer=keras.initializers.GlorotUniform(seed=None)))(doa)
+            x_output = Activation('relu')(x_output)
+            x_output = Dropout(dropout_rate)(x_output)
+            x_output = TimeDistributed(Dense(12, kernel_initializer=keras.initializers.GlorotUniform(seed=None)))(x_output)
+            x_output = Activation('tanh', name='doa_out_x')(x_output)
+            x_output = Dropout(dropout_rate)(x_output)
+
+            y_output = TimeDistributed(Dense(data_out[-1], kernel_initializer=keras.initializers.GlorotUniform(seed=None)))(doa)
+            y_output = Activation('relu')(y_output)
+            y_output = Dropout(dropout_rate)(y_output)
+            y_output = TimeDistributed(Dense(12, kernel_initializer=keras.initializers.GlorotUniform(seed=None)))(y_output)
+            y_output = Activation('tanh', name='doa_out_y')(y_output)
+            y_output = Dropout(dropout_rate)(y_output)
+            z_output = TimeDistributed(Dense(data_out[-1], kernel_initializer=keras.initializers.GlorotUniform(seed=None)))(doa)
+            z_output = Activation('relu')(z_output)
+            z_output = Dropout(dropout_rate)(z_output)
+            z_output = TimeDistributed(Dense(12, kernel_initializer=keras.initializers.GlorotUniform(seed=None)))(z_output)
+            z_output = Activation('tanh', name='doa_out_z')(z_output)
+            z_output = Dropout(dropout_rate)(z_output)
+
+            doa = keras.layers.concatenate([x_output, y_output, z_output], axis=-1)  # (batch_size, time_steps, 3 * n_classes)
+        else:
+            for nb_fnn_filt in fnn_size:
+                doa = TimeDistributed(Dense(nb_fnn_filt))(doa)
+                doa = Dropout(dropout_rate)(doa)
+            print(spec_cnn)
+            doa = TimeDistributed(Dense(data_out[-1] if is_accdoa else data_out[1][-1]))(doa)
+            doa = Activation('tanh', name='doa_out')(doa)
+            print(spec_cnn)
         #model = None
         # CUSTOM added BinaryCrossentropy loss as seen in Xytos diplwmatikh,
         if is_accdoa:
@@ -807,7 +831,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
             
             model.compile(optimizer=Adam(learning_rate=0.0001),
                 loss='mse',
-                metrics=['accuracy'])#loss='mse')
+                metrics=['accuracy'])
         else:
             # FC - SED
             sed = spec_rnn
