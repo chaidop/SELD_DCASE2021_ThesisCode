@@ -43,7 +43,7 @@ Lee:In a practical situation, sound of an event is transmitted to microphones
 	The log-mel spectrogram extracted from input audio data is used as input features for SED, and intensity vectors 
 	are additionally extracted as input features for DoA estimation
 	
-Parrish:
+Parrish::
 		 Historically, sound event detection and localization have been
 		accomplished using signal processing and tracking algorithms such
 		as the TRAMP algorithm that utilizes a voice-activity detector an
@@ -51,7 +51,44 @@ Parrish:
 		end-to-end trained
 		networks have been the top performing approaches to previous
 		DCASE SELD tasks including an ensemble of CRNNs in 2019 [4]
-		and an ensemble of multiple deep neural networks in 2020 [
+		and an ensemble of multiple deep neural networks in 2020 
+		
+		F-Score on
+		classifications localized to within 20◦
+		of the true DOA. LECD computes the localization error in degrees between truth and estimates
+		of the same class, and LRCD computes class-based recall.
+		
+Politis: The most important difference of the new dataset is the
+		introduction of directional interferers, meaning sound events that
+		are localized in space but do not belong to the target classes to be
+		detected and are not annotated
+		The spatiotemporal characterization
+		of the scene produced by SELD makes it suitable for a range of applications such as robot audition and machine listening in general
+		, acoustic monitoring, smart home environments,
+		improved human-machine interaction [7], speech recognition [8],
+		and sonic information visualization [9], among others
+		
+		participants experimenting with homogeneous joint loss functions, self-attention layers,
+		advanced spatial augmentation strategies, combinations of
+		model-based localization with learning-based SED, databased fusion of individual SSL and SED systems, and
+		event- or track-based prediction modeling, instead of class-based
+		prediction. The latter development specifically tried to
+		address the case of same-class events occurring simultaneously
+Shimada:  The model is trained to
+		minimize the Euclidean distance between the estimated and target
+		coordinates in the ACCDOA representation. We solve the multioutput regression with a mean square error (MSE) loss
+Nguyen:
+		This frequency correspondence, however, has
+	no counterpart for GCC-PHAT features since the time lags dimension of the GCC-PHAT features does not have a linear one-to-one
+	mapping with the mel bands of the log-mel spectrograms. As a result, all of the DOA information is aggregated at the frame level,
+	making it difficult to assign correct DOAs to different sound events.
+	In addition, GCC-PHAT features are noisy when there are multiple
+	sound sources.
+	
+Zhang:  In the SELD
+		task of DCASE 2021, the baseline system (called SELDnet) is no
+		longer a multitask learning system since it eliminates event classification output branch by setting training target as activity-coupled
+		Cartesian DOA (ACCDOA) representation 
 Chapter 3:
 Bai: (in resnets) The residual block introduced can make the deep network have a better convergence effect.
 
@@ -160,6 +197,158 @@ Parrish: We implement a network with successive blocks of multiscale filters to 
 		parsing blocks [7] before being processed by a multi-headed self-attention layer (MHSA) [8] that outputs to three parallel dense
 		layers to predict output detections and DOA coordinates for each
 		class in cartesian coordinates->uses 3 foa for 3 simultaneous predictions like Lee
+		
+		To facilitate learning from signals with potentially varying spectral
+		characteristics we use NASnet-like [6] convolution modules, termed
+		NAS blocks in Figure 1, along with convolution modules inspired
+		by PSPNet [7], termed pyramid scene parsing blocks in Figure 1.
+		We anticipate that these multi-scale modules will enable the CNN
+		to extract features at varying scales in the data, allowing for potentially better generalization to acoustic targets with varying spectral
+		characteristics and bandwidths.
+		
+		The output tensors have dimension 40x12x2, representing 40 time samples (for 4 seconds of data
+		with 100 ms resolution), twelve classes, and up to two instances
+		of the same class simultaneously. 
+		
+		we use the same processing parameters
+		and intensity vector representation as Cao, et al. [11]. This includes
+		segmenting the data into 4-second segments and computing a logmel spectral and intensity representation with 256 bins and 160 time
+		scans
+		
+Shimada:  model ensembles by averaging outputs of several systems trained with different conditions such as input features, training folds, 
+		and model architectures. We also use the event independent network v2 (EINV2)-based system to increase the diversity of the model ensembles
+		
+		Some of the models
+	use PCEN [12], cosIPDs, and sinIPDs [13] as input features, instead
+	of the amplitude spectrograms and IPDs
+	
+	Use spatial augmentation method [10].
+	It rotates the training data represented in the FOA format and enables us to increase the numbers of DOA labels without losing the
+	physical relationships between steering vectors and observations.
+	
+	we consider three variants of D3Net architecture
+	
+	replace the GRU block
+	with a time-frequency RNN (TFRNN) block, which is inspired by a
+	dual-path recurrent neural network (DPRNN) block
+	Each RNN block is composed of bidirectional long short-term
+	memory (LSTM), fully connected layers, and layer normalization.
+	The intra- and inter-chunk RNN blocks are alternately stacked. As
+	shown in Fig. 3 (b), TFRNN with four RNN blocks is applied
+	
+	During the inference, we split the 60-second inputs into shorter segments that overlap. Subsequently, each segment is processed, and
+		the results of overlapped frames are averaged.
+		
+		The track-wise format assumes that the output of the model has several tracks, each with
+	at most one predicted event with a corresponding DOA. Different
+	tracks can detect events of the same class with different DOA, which
+	enables us to detect overlaps of the same class
+	
+	A model ensemble is performed by averaging outputs of several
+	models trained with different conditions such as input features,
+	training folds, and model architectures.
+
+	There were no significant difference between the simple average
+	and the weighted average.
+	
+Nguyen: The SELD encoder is a convolutional neural network (CNN) that learns spatial and spectrotemporal representation f the feaatures
+		The SELD decoder consists of a temporal network (LSTM, GRU or MHSA) and fully connected (FC) layers to decode SELD output sequences
+		
+		ResNet22 without the last global pooling and fully connected layer.The first convolution layer of the
+		ResNet22 is a double convolution with kernel size (3, 3) and stride
+		1. The downsampling factor of ResNet22 is 16 on both time and
+		frequency dimensions. The output embedding of the ResNet22 encoder is average-pooled along the frequency dimension before fed
+		into the SELD decoder.
+		
+		Use of SEDXYZ instead of ACCDOA: 4 FC layers to produce the SELD output, first produces the posterior probabilities
+		of the sound classes. The remaining three FC layers produce Cartesian coordinates of the DOA on a unit sphere
+		
+		The disadvantage of the class-wise output
+		format is that they cannot resolve overlapping same-class events,
+		 test-time augmentation (TTA) during inference.
+		We adapted the 16-pattern spatial augmentation technique from [22]
+		for TTA
+		
+		SED ensemble OF cnn MODELS was then combined with the 4
+		SELD ensembles to form 4 submission systems 
+
+		Use of all 6 folds for training
+		
+		tHE RESNET SYSTEM WITH GRU AND 128 MEL BANDS PERFORMED BETTER THAN THE BASELINE WITH 64 MEL BANDS
+		
+		 Salsa feature extraction was th eprimary difference in performance tho
+		 
+Sun: he square convolution shares the weight in each T-F bin
+	of the fixed area in feature map, that is limited. In order to address
+	this problem, we propose a AHConv mechanism instead of square
+	convolution to obtain time and frequency dependencies
+	
+	adopt a multi-scale
+	feature extracting strategy, in which the strategy was designed to
+	capture the longer temporal context information than the conventional convolutions. Moreover, the parallel structure is applied in
+	Adaptive attention block
+	
+	Among the various CNN architectures, if the network contains
+	shorter connections between layers close to the input and those
+	close to the output, it can be substantially deeper, more accurate,
+	and efficient to train, to further improve the information flow between layers [16]. In this work, we combine the advantages of
+	DenseNet (same as shimada, d3net) and dilated convolution, and propose a extractor called
+	multi-scale feature extractor->has a multiple dilation factor within a single layer
+	
+	
+Yalta:
+	Mel filterbank features is subsample by using two CNN/Residual
+	layers with max-pooling layers. The CNN layers use a stride size
+	of 1, a kernel size of 3, and a padding size of 1. The residual layers
+	comprise two CNN layers with kernel size three and one CNN layer
+	as identity shortcut
+	
+	The audio tracks are split into subsegments with an overlap during
+	inference. Then, the results from the overlapped frames are averaged. 
+	Finally, we conduct post-processing of minimum thresholding for each sound event using a hyperparameter search
+	
+	AdamW solver with an initial learning rate of 10−3
+		and a linear learning scheduler with a final learning rate of 10−7
+		
+		4 transformer models->>check out -> s 2 residual blocks with 64
+		channels. After the residual block a max-pooling layers is stacked.
+		The first max-pooling has a stride of (5, 4) size and the second a
+		size of (1, 4). After the second max-pooling, a linear layer reduce to
+		128-dims. For this model, we employed a fixed positional encoding.
+		The model has three self-attention blocks with 4 attention heads and
+		1024 units for the position-wise FF
+
+		the use of Residual connections in a SELDnet model improves localization recall. However, the other metrics do not show a relevant improvement.
+		 Transformer reaches
+		a higher location recall when using a Tmin close to zero. However,
+		the performance of the models on the other metrics degrades.
+		
+Zhang:  we extract 64 log-Mel
+		magnitude spectrogram for each audio file using short-term Fourier
+		transform (STFT) with the configuration of 40 ms frame length and
+		20 ms hop length.
+		use both of IV and GCCPHAT channels
+		
+		 fed into the convolutional neural networks (CNN) blocks firstly to extract high-level features
+		 
+		 The output activation from CNN is further reshaped to a 60
+		frame sequence of length 512 feature vectors and fed to Conformer
+		block which is used to learn both the position-wise local features
+		and the temporal context information
+		
+		ensembles are class-based weighted mean of
+		the output predicted by different models(like Nguyen)
+		
+		CNN-cONFORMER MODEL
+		also tried to substitute the CNN layer to
+		other high-level feature representation modules, including SEResNet, ResNet and Xception, with no improvementover the CNN
+		
+		we train the network for 400 epochs with a minibatch size
+		of 256 and initialize the learning rate as 0.001, which will be decreased by 31.6% if the optimization criterion cannot reduce in 10
+		consecutive epochs.
+		
+		train the weight parameters of the ensemble model,
+		the predictions of the training set were used by adopting the cross-validation setup
 =============================== WHAT TO TRY ===============================
 APPROACHES: Bai uses Resnet34 with different SED and DOA branch->try with different SED and DOA branch
 Huang uses Squeeze-Excitation block and modified Residual block
@@ -168,6 +357,8 @@ Lee different branches with parameter sharing and serial prediciton->use 3 fc ou
 Naranjo Alcajar uses squeeze excitation technique with p=1
 Park uses separate sed and doa branches. Also test data augmentation like Nguyen and dynamic threshold like Ko->maybe also look into transfer learning
 Parrish jointly learns teh seld and has 3 fc like Lee
+nGUYEN DOES SOME SHIT ON THE PREPROCESSING and also uses SEDXYZ (4 fc like Lee and Parrish). Also TTA 
+Yalta used post processing by subsegmenting the output and averaging the overlapped segments
 
 search music separation
 
