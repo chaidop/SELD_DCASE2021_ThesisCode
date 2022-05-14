@@ -172,7 +172,7 @@ def main(argv):
 
         #Load the wanted models
         
-        model1 = model2 = model3 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+        model1 = model3 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
@@ -180,10 +180,21 @@ def main(argv):
                                       depth = params['nb_conf'],
                                       decoder = params['decoder'],
                                       dconv_kernel_size = params['dconv_kernel_size'],
-                                      nb_conf = params['nb_conf'])
+                                      nb_conf = params['nb_conf'],
+                                      simple_parallel=params['simple_parallel'])
+        model2 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
+                                      model_approach=2,
+                                      depth = params['nb_conf'],
+                                      decoder = 1,
+                                      dconv_kernel_size = params['dconv_kernel_size'],
+                                      nb_conf = params['nb_conf'],
+                                      simple_parallel=params['simple_parallel'])
         
         print('hey1')
-        model1.load_weights(params['model_dir']+'2_lowfreq_base_da1_mic_dev_split6_model.h5')
+        model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
         print('done')
 
         """
@@ -199,28 +210,26 @@ def main(argv):
         #model2.load_weights(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
         print("hey")
         """
-        model2.load_weights(params['model_dir']+'2_midfreq_base_da1_mic_dev_split6_model.h5')
         model3.load_weights(params['model_dir']+'2_topfreq_base_da1_mic_dev_split6_model.h5')
     for epoch_cnt in range(nb_epoch):
         start = time.time()
         
+        ##ensembling
+        models = [model1, model2, model3]
+        from keras.layers import Input, Average
+        from keras.models import Model
+        model_input = Input(shape=( data_in[-3], data_in[-2], data_in[-1]))
+        model_outputs = [model(model_input) for model in models] #list of models outputs
+        ensemble_output = Average()(model_outputs)
+        ensemble_model = Model(inputs=model_input, outputs=ensemble_output)
+
         # predict once per epoch
-        pred1 = model1.predict_generator(
+        pred = ensemble_model.predict_generator(
             generator=data_gen_val.generate(),
             steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
             verbose=2
         )
-        pred2 = model2.predict_generator(
-            generator=data_gen_val.generate(),
-            steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
-            verbose=2
-        )
-        pred3 = model3.predict_generator(
-            generator=data_gen_val.generate(),
-            steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
-            verbose=2
-        )
-        pred = (pred1 + pred2 +pred3)/3
+
         if params['is_accdoa']:
             sed_pred, doa_pred = get_accdoa_labels(pred, nb_classes)
             sed_pred= reshape_3Dto2D(sed_pred)
@@ -274,22 +283,11 @@ def main(argv):
         
         print(unique_name)
         #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
-        pred_test1 = model1.predict_generator(
+        pred_test = ensemble_model.predict_generator(
             generator=data_gen_test.generate(),
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
             verbose=2
         )
-        pred_test2 = model2.predict_generator(
-            generator=data_gen_test.generate(),
-            steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
-            verbose=2
-        )
-        pred_test3 = model3.predict_generator(
-            generator=data_gen_test.generate(),
-            steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
-            verbose=2
-        )
-        pred_test = (pred_test1+pred_test2 + pred_test3)/3
         if params['is_accdoa']:
             test_sed_pred, test_doa_pred = get_accdoa_labels(pred_test, nb_classes)
             test_sed_pred = reshape_3Dto2D(test_sed_pred)
