@@ -1,10 +1,25 @@
 Diavase kai to notes_for diplwmatiki.txt
 
+Change the key and value in the conformer 
+Try foa with onformer maybe?
+
 Resnet 34 gru and da1+2
 Resnet and conformer joint model
 Resnet + Conformer ensemble
+D3Net + Conformer ensemble
+Conformer +  Transformer (not self-attetnion)
+maybe use nas to find the 3 cnn models for ensemble
+
+TFRNN block instead of gru (Shimada)
+Use spatial augmentation method (Shimada) for increase in doa
+Postprocessing like During the inference, we split the 60-second inputs into shorter segments that overlap. Subsequently, each segment is processed, and
+the results of overlapped frames are averaged( Shimada)
+Different folds in training
 
 Adaptive grad clipping and test time augment
-3 FC out layers
+3 FC out layers (and maybe with parallel learning, see Lee)
 
 NAS and separate branch learning
+
+
+https://arxiv.org/pdf/1904.04466v1.pdf
