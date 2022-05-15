@@ -213,7 +213,7 @@ def main(argv):
                                       decoder = params['decoder'],
                                       dconv_kernel_size = params['dconv_kernel_size'],
                                       nb_conf = params['nb_conf'],
-                                      simple_parallel=params['simple_parallel'])
+                                      simple_parallel=False)
         model2 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
@@ -228,7 +228,11 @@ def main(argv):
         print('hey1')
         #model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
         print('done')
-
+        
+        data_gen_test = cls_data_generator.DataGenerator(
+            params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
+        )
+        print(unique_name)
         """
         model2 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
@@ -239,13 +243,14 @@ def main(argv):
                                       decoder = 0,
                                       dconv_kernel_size = params['dconv_kernel_size'],
                                       nb_conf = params['nb_conf'])
-        #model2.load_weights(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
         print("hey")
         """
-        model3.load_weights(params['model_dir']+'2_ready_conformer_depth_myda21_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
+        model2.load_weights(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
+        model3.load_weights(params['model_dir']+'2_ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
         
         ##ensembling
         models = [model2, model3]
+
         from keras.layers import Input, Average
         from keras.models import Model
         model_input = Input(shape=( data_in[-3], data_in[-2], data_in[-1]))
@@ -253,32 +258,55 @@ def main(argv):
         ensemble_output = Average()(model_outputs)
         ensemble_model = Model(inputs=model_input, outputs=ensemble_output)
 
-        outs = []
-        for model in models:
-            outs.append(ensemble_outputs(model, data_gen_test, batch_size=4))
-            #del model
-        
-        outs1 = [outs[0]]
-        outputs = []
-        outs2 = list(zip(*outs1))
-        for out in outs2:
-            accdoa = list(zip(*out))
-            accdoa = tf.add_n(accdoa) / len(accdoa)
-            outputs.append((accdoa))
+        #Kos aggregation
+        if params['aggregation'] == True:
+            outs = []
+            for model in models:
+                outs.append(ensemble_outputs(model, data_gen_test, batch_size=params['batch_size']))
+                #del model
+            
+            outs1 = [outs[0]]
+            outputs = []
+            outs2 = list(zip(*outs1))
+            for out in outs2:
+                accdoa = list(zip(*out))
+                accdoa = tf.add_n(accdoa) / len(accdoa)
+                outputs.append((accdoa))
 
-        print(outputs)
+            print(outputs)
         #####
         
-        data_gen_test = cls_data_generator.DataGenerator(
-            params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
-        )
-        print(unique_name)
         #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
         pred_test = ensemble_model.predict_generator(
             generator=data_gen_test.generate(),
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
             verbose=2
         )
+        # TTA
+        if params['tta'] is True:
+            predictions = []
+            data_gen_test_tta1 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 1, is_eval=True if params['mode'] is 'eval' else False
+            )
+            data_gen_test_tta2 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 2, is_eval=True if params['mode'] is 'eval' else False
+            )
+            pred_test_tta1 = model.predict_generator(
+                generator=data_gen_test_tta1.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            ) 
+            pred_test_tta2 = model.predict_generator(
+                generator=data_gen_test_tta2.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            )
+            predictions.append(pred_test)
+            predictions.append(pred_test_tta1)
+            predictions.append(pred_test_tta2)
+
+            pred_test = np.mean(predictions, axis=0)
+        ##
         if params['is_accdoa']:
             test_sed_pred, test_doa_pred = get_accdoa_labels(pred_test, nb_classes)
             test_sed_pred = reshape_3Dto2D(test_sed_pred)
