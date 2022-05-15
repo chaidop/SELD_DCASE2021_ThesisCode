@@ -9,13 +9,12 @@ from IPython import embed
 from collections import deque
 import random
 from data_augmentation import *
-from keras_model import ensemble
 from utils import *
 
 
 class DataGenerator(object):
     def __init__(
-            self, params, split=1, shuffle=True, per_file=False, is_eval=False, train=False, ensemble = 0
+            self, params, split=1, shuffle=True, per_file=False, is_eval=False, train=False, tta = 0
     ):
         self._per_file = per_file
         self._is_eval = is_eval
@@ -53,7 +52,7 @@ class DataGenerator(object):
         #else if it is for predict do not augment
         self.train = train
         self.model_approach = params['model_approach']
-        self.ensemble = ensemble
+        self.tta = tta
 
         if self._per_file:
             self._nb_total_batches = len(self._filenames_list)
@@ -241,24 +240,20 @@ class DataGenerator(object):
                     #(64, 300, 64, 10) (batches, SEQ_LEN, MEL_BINS, CHAN)
                     feat = self._split_in_seqs(feat, self._feature_seq_len)
                     feat = np.transpose(feat, (0, 3, 1, 2))
+                    
                     ##CUSTOM if ensemble method of 3 freq is used 
                     #then generate 3 feat instead of  and 3 respective labels
-                    temp_feat_full = np.zeros((feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
                     if self.model_approach == 4:
-                        if self.ensemble == 1:
-                            feat1, was_augm = EnsembleFreqMasking(min_freq= [32], max_freq=  [64])(feat)
-                            temp_feat_full = feat1
-                        elif self.ensemble == 2:
-                            feat2, was_augm = EnsembleFreqMasking(min_freq = [0, 32], max_freq = [16, 64])(feat)
-                            temp_feat_full = feat2
-                        elif self.ensemble == 3:
-                            feat3, was_augm = EnsembleFreqMasking(min_freq = [0], max_freq = [32])(feat)
-                            temp_feat_full = feat3
-                        feat = temp_feat_full
+                        feat1 = EnsembleFreqMasking(min = 0, max = 32)(feat)
+                        feat2 = EnsembleFreqMasking(min = 16, max = 48)(feat)
+                        feat3 = EnsembleFreqMasking(min = 32, max = 64)(feat)
+
+                        feat = np.concatenate(feat1, feat2, feat3)
+
                     
                     ##CUSTOM add a data augmented feature in the array
                     #for each batch segment(64 segments) add that to specaugm
-                    if self.data_augm > 0 and self.data_augm is not 4 and self.train:
+                    if self.data_augm is not 0 and self.train:
                         temp_feat_full = np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
                         temp_label_full = np.zeros((2*feat.shape[0], self._label_seq_len, self._label_len))
                         #reset index array 
@@ -282,14 +277,12 @@ class DataGenerator(object):
                     
                     #(64, 60, 48) (BATCH SIZE, SEQ LEN, CLASSES)
                     label = self._split_in_seqs(label, self._label_seq_len)
-                     ##CUSTOM if ensemble method of 3 freq is used 
+                   
+                    ##CUSTOM if ensemble method of 3 freq is used 
                     #then generate 3 feat instead of  and 3 respective labels
-                    #if self.model_approach == 4:
-                    #    temp_label_full = np.zeros((label.shape[0],self._label_seq_len, self._label_len))
-                        #for k in range(3):
-                        #    temp_label_full[k,:,:, :] = label
-                        #label = temp_label_full
-                    if self.data_augm > 0 and self.data_augm is not 4 and self.train:
+                    if self.model_approach == 4:
+                        label = np.concatenate(label, label, label)
+                    if self.data_augm is not 0 and self.train:
                         counter = 0
                         for j in range(label.shape[0]):
                             temp_label_full[j,:,:] = label[j,:,:]
@@ -302,7 +295,7 @@ class DataGenerator(object):
                                     break
                         label = temp_label_full[:label.shape[0]+len(self.augm_indx)-1,:,:]
                         
-                    if self._is_accdoa:     
+                    if self._is_accdoa:
                         mask = label[:, :, :self._nb_classes]
                         mask = np.tile(mask, 3)
                         label = mask * label[:, :, self._nb_classes:]
@@ -312,6 +305,22 @@ class DataGenerator(object):
                             label[:, :, :self._nb_classes],  # SED labels
                             label[:, :, self._nb_classes:] if self._doa_objective is 'mse' else label # SED + DOA labels
                              ]
+
+                    #14/5/2022 CUSTOM for each batch of feat and labels, do tta with ACS (GccRandomSwapMic)
+                    if self.tta > 0:
+                        was_augm = False
+                        feat_news, label_seds, label_doas, label_news = [], [], [], []
+                        for i in range(label[0]):
+                            if self.tta == 1:
+                                feat_new, label_sed, label_doa, was_augm = GccRandomSwapChannelMic()(x = feat[i,:,:,:], y_sed= label[i,:,:self._nb_classes], y_doa= label[i,:,self._nb_classes:])
+                            elif self.tta == 2:
+                                feat_new, label_sed, label_doa, was_augm = TfmapRandomSwapChannelMic()(x = feat[i,:7,:,:], y_sed= label[i,:,:self._nb_classes], y_doa= label[i,:,self._nb_classes:])
+                            feat_news.append((feat_new))
+                            label_seds.append((label_sed))
+                            label_doas.append((label_doa))
+                            label_news.append((label_sed, label_doa))
+                        feat, label = feat_news, label_news
+
                     yield feat, label
 
     def _split_in_seqs(self, data, _seq_len):

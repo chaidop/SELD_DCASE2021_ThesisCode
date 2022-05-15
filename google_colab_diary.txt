@@ -204,6 +204,7 @@ ResNet-Conformer
 running adabelief, da2, swa 128 mel bands->ready_conformer_depth_swa_myda2_adabelief0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256 not better results 64 bands (deleted accidentally, but had ER: 0.92 at epoch 9 and 0.75 score
 ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256->gave similar results to best attempt, which was same with da2 and no swa (ready_conformer_depth_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256)
 Will run same but with both augmentations
+
 IMPORTANT:: All conformer implementations have gru, i fuqed up
 now running the da3 ready_conformer_depth_swa_myda3_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256 that ACTUALLY has no gru (also mel-bands 128)
 
@@ -212,39 +213,3 @@ NO GRU GIVESCONSTANT RESULT->always use it i guess
 ready_conformer_depth_swa_myda3_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_128mel gives worse results than jus da1
 
 den yparxei logikh se tipota
-11/5/2022
-
-turbox fixed
-downloaded cuda 11.0 and cudnn 8.0.3 following nvidias guide site and the youtube video https://www.youtube.com/watch?v=OEFKlRSd8Ic&t=977s
-downloaded cuda 11.1 because of SubProcess ended with return code: 4294967295 i had before (check the text file )
-
-running:
- 	-Lenovo: resnet34, da2, sedxyz and rate scheduler 0.5 gia na parw ta weights tou
-	-turbox: da3 conformer and 16 layers of attention 128 mel->FINISHED, gave constanbt loss as always... may need to augment the epochs
-
-need to run conformer no rnn!!->finished, constant loss for 30 epochs and ensembling methods tommorrow
-
-Try concatenating both foa+mic
-
-12/5/2022
-
-RUNNING: Turbox: resnet-conformer no rnn, 16 attn 
-
-changed the cnn extraction part of the conformer approach to be same as Zhangs
-also commented the dense doa extraction part, since the dense is already implemented after conformer
-also changed strides=(2,2) in res_conv18, according to the originbal paper https://arxiv.org/pdf/1512.03385.pdf->it gave constant loss (resnet34_conformer_gru_16attn and 16attn2 so changedd it to strides(1,1,) (resnet34_gru_conformer_16attn3))
-also made resnet_2020 model, will use in resnete ensembling, from paper A Model Ensemble Approach for Sound Event Localization and Detection
-
-also added axis=1 (and not =3) on the res_conv18 batchnorm(), because of " bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1" in https://github.com/keras-team/keras-applications/blob/master/keras_applications/densenet.py
-
-swa_scheduler0_5_weightINitializer_sedxyz_baseline_da2 gave better results than simple vanilla
-
-RUN this week:
-separate low, mid and top freq baseline models
-baseline swa da2
-baseline da1+2 
-swa scheduller 0.5 baseline weightInitializers SEDxyz da2 -> run untiil epoch 9->better than simple baseline
-swa scheduler 0.5 resnet34 weightInitializers SEDxyz da2-> didnt save txt file, but did worse than resnet18
----turbox
-several conformer 16attn models and 128 mels
-->one with resnet and without gru, one with resnet and gru and one byitself and no gru
