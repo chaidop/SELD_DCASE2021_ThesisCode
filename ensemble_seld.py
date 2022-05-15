@@ -23,6 +23,8 @@ global history
 import tensorflow
 import math
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 sd=[]
 class LossHistory(tensorflow.keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
@@ -79,6 +81,36 @@ def get_accdoa_labels(accdoa_in, nb_classes):
       
     return sed, accdoa_in
 
+#Kos ensembling bDNN
+@tf.function
+def predict(model, x, batch_size, win_size, step_size):
+    windows = tf.signal.frame(x, win_size, step_size, axis=0)
+
+    accdoa = []
+    for i in range(int(np.ceil(windows.shape[0]/batch_size))):
+        ac = model(windows[i*batch_size:(i+1)*batch_size], training=False)
+        accdoa.append(ac)
+    accdoa = tf.concat(accdoa, axis=0)
+
+    # windows to seq
+    total_counts = tf.signal.overlap_and_add(
+        tf.ones((accdoa.shape[0], win_size//step_size), dtype=accdoa.dtype),
+        1)[..., tf.newaxis]
+    accdoa = tf.signal.overlap_and_add(tf.transpose(accdoa, (2, 0, 1)), 1)
+    accdoa = tf.transpose(accdoa, (1, 0)) / total_counts
+
+    return accdoa
+
+def ensemble_outputs(model, xs: list,
+                     win_size=300, step_size=5, batch_size=4):
+    # assume 0th dim of each sample is time dim
+    accdoas = []
+
+    for x in xs:
+        accdoa = predict(model, x, batch_size, win_size, step_size)
+        accdoas.append(accdoa)
+
+    return list(accdoa)
 def main(argv):
     """
     Main wrapper for training sound event localization and detection network.
@@ -172,11 +204,11 @@ def main(argv):
 
         #Load the wanted models
         
-        model1 = model3 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+        model3 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                      model_approach=0,
+                                      model_approach=6,
                                       depth = params['nb_conf'],
                                       decoder = params['decoder'],
                                       dconv_kernel_size = params['dconv_kernel_size'],
@@ -194,7 +226,7 @@ def main(argv):
                                       simple_parallel=params['simple_parallel'])
         
         print('hey1')
-        model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
+        #model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
         print('done')
 
         """
@@ -210,12 +242,10 @@ def main(argv):
         #model2.load_weights(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
         print("hey")
         """
-        model3.load_weights(params['model_dir']+'2_topfreq_base_da1_mic_dev_split6_model.h5')
-    for epoch_cnt in range(nb_epoch):
-        start = time.time()
+        model3.load_weights(params['model_dir']+'2_ready_conformer_depth_myda21_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
         
         ##ensembling
-        models = [model1, model2, model3]
+        models = [model2, model3]
         from keras.layers import Input, Average
         from keras.models import Model
         model_input = Input(shape=( data_in[-3], data_in[-2], data_in[-1]))
@@ -223,64 +253,25 @@ def main(argv):
         ensemble_output = Average()(model_outputs)
         ensemble_model = Model(inputs=model_input, outputs=ensemble_output)
 
-        # predict once per epoch
-        pred = ensemble_model.predict_generator(
-            generator=data_gen_val.generate(),
-            steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
-            verbose=2
-        )
-
-        if params['is_accdoa']:
-            sed_pred, doa_pred = get_accdoa_labels(pred, nb_classes)
-            sed_pred= reshape_3Dto2D(sed_pred)
-            doa_pred = reshape_3Dto2D(doa_pred)
-        else:
-            sed_pred = reshape_3Dto2D(pred[0]) > 0.5
-            doa_pred = reshape_3Dto2D(pred[1] if params['doa_objective'] is 'mse' else pred[1][:, :, nb_classes:])
-
-        dcase_output_val_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
-        # Calculate the DCASE 2021 metrics - Location-aware detection and Class-aware localization scores
-        dump_DCASE2021_results(data_gen_val, feat_cls, dcase_output_val_folder, sed_pred, doa_pred)
-        seld_metric[epoch_cnt, :] = score_obj.get_SELD_Results(dcase_output_val_folder)
-
-        patience_cnt += 1
-        if seld_metric[epoch_cnt, -1] < best_seld_metric:
-            print('saving...')
-            best_seld_metric = seld_metric[epoch_cnt, -1]
-            best_epoch = epoch_cnt
-            #model.save(model_name)
-            print('saved!')
-            patience_cnt = 0
-
-        print(
-            'epoch_cnt: {}, time: {:0.2f}s, tr_loss: {:0.2f}, '
-            '\n\t\t DCASE2021 SCORES: ER: {:0.2f}, F: {:0.1f}, LE: {:0.1f}, LR:{:0.1f}, seld_score (early stopping score): {:0.2f}, '
-            'best_seld_score: {:0.2f}, best_epoch : {}\n'.format(
-                epoch_cnt, time.time() - start, tr_loss[epoch_cnt],
-                seld_metric[epoch_cnt, 0], seld_metric[epoch_cnt, 1]*100,
-                seld_metric[epoch_cnt, 2], seld_metric[epoch_cnt, 3]*100,
-                seld_metric[epoch_cnt, -1], best_seld_metric, best_epoch
-            )
-        )
-        if patience_cnt > params['patience']:
-            break
+        outs = []
+        for model in models:
+            outs.append(ensemble_outputs(model, data_gen_test, batch_size=4))
+            #del model
         
-        print('\nResults on validation split:')
-        print('\tUnique_name: {} '.format(unique_name))
-        print('\tSaved model for the best_epoch: {}'.format(best_epoch))
-        print('\tSELD_score (early stopping score) : {}'.format(best_seld_metric))
+        outs1 = [outs[0]]
+        outputs = []
+        outs2 = list(zip(*outs1))
+        for out in outs2:
+            accdoa = list(zip(*out))
+            accdoa = tf.add_n(accdoa) / len(accdoa)
+            outputs.append((accdoa))
 
-        print('\n\tDCASE2021 scores')
-        print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(seld_metric[best_epoch, 2], seld_metric[best_epoch, 3]*100))
-        print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(seld_metric[best_epoch, 0], seld_metric[best_epoch, 1]*100))
-
-        # ------------------  Calculate metric scores for unseen test split ---------------------------------
-        print('\nLoading the best model and predicting results on the testing split')
-        print('\tLoading testing dataset:')
+        print(outputs)
+        #####
+        
         data_gen_test = cls_data_generator.DataGenerator(
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
-        
         print(unique_name)
         #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
         pred_test = ensemble_model.predict_generator(
@@ -311,7 +302,6 @@ def main(argv):
             print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(test_seld_metric[2], test_seld_metric[3]*100))
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
-    plt.show()
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))
