@@ -730,9 +730,10 @@ class GccSwapChannelMic(MapDataAugmentBase):
     """
     This data augmentation random swap channels of melspecgcc or linspecgcc of MIC format.
     """
-    def __init__(self, always_apply: bool = False, p: float = 0.5, n_classes: int = 12):
+    def __init__(self, always_apply: bool = False, p: float = 0.5, n_classes: int = 12, tta: int = 1):
         super().__init__(always_apply, p)
         self.n_classes = n_classes
+        self.tta = tta
 
     def reflect_azi(self, azi, n_azis: int = 72):
         """reflect azi for eventwise clapolar format: azi -> -azi
@@ -755,7 +756,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
                               np.flip(ele[:, :n_eles//2 + 1], axis=1)), axis=1)
         return ele
 
-    def apply(self, tta , x: np.ndarray, y_sed: np.ndarray, y_doa: np.ndarray):
+    def apply(self, x: np.ndarray, y_sed: np.ndarray, y_doa: np.ndarray):
         """
         :param x < np.ndarray (n_channels, n_time_steps, n_features)>
         :param y_nevent: <np.ndarray (n_time_steps, )>
@@ -774,7 +775,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
         y_doa_new = y_doa.copy()
         # random method
         # (φ = -φ + π/2), (θ = θ) see table 1 in paper mentioned above
-        if tta == 1:  # swap M2 and M3 -> swap x and y
+        if self.tta == 1:  # swap M2 and M3 -> swap x and y
             x_new[1] = x[2]
             x_new[2] = x[1]
             x_new[4] = x[5]
@@ -783,7 +784,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
             x_new[-1] = x[-2]
             x_new[-2] = x[-1]
         # (φ = -φ - π/2), (θ = θ)
-        elif tta == 2:  # swap M1 and M4 -> swap x and y, negate x and y
+        elif self.tta == 2:  # swap M1 and M4 -> swap x and y, negate x and y
             x_cur = x_new.copy()
             x_new[0] = x_cur[3]
             x_new[3] = x_cur[0]
@@ -793,7 +794,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
             x_new[8] = np.flip(x_cur[4], axis=-1)
             x_new[9] = np.flip(x_cur[5], axis=-1)
         # (φ = -φ), (θ = -θ)
-        elif tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
+        elif self.tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
             x_cur = x_new.copy()
             x_new[0] = x_cur[1]
             x_new[1] = x_cur[0]
@@ -805,16 +806,68 @@ class GccSwapChannelMic(MapDataAugmentBase):
             x_new[7] = x_cur[6]
             x_new[8] = x_cur[5]
             x_new[9] = np.flip(x_cur[9], axis=-1)
+        # (φ = φ -p/2), (θ = -θ)
+        elif self.tta == 4:  # swap M1 and M2, M3 and M4 -> negate y and z
+            x_cur = x_new.copy()
+            x_new[0] = x_cur[1]
+            x_new[1] = x_cur[3]
+            x_new[2] = x_cur[0]
+            x_new[3] = x_cur[2]
+            x_new[4] = x_cur[8]
+            x_new[5] = np.flip(x_cur[4], axis=-1)
+            x_new[6] = x_cur[7]
+            x_new[7] = np.flip(x_cur[6], axis=-1)
+            x_new[8] = np.flip(x_cur[9], axis=-1)
+            x_new[9] = x_cur[5]
+        # (φ = φ + p/2), (θ = -θ)
+        elif self.tta == 5:  # swap M1 and M2, M3 and M4 -> negate y and z
+            x_cur = x_new.copy()
+            x_new[0] = x_cur[2]
+            x_new[1] = x_cur[0]
+            x_new[2] = x_cur[3]
+            x_new[3] = x_cur[1]
+            x_new[4] = np.flip(x_cur[5], axis=-1)
+            x_new[5] = x_cur[9]
+            x_new[6] = np.flip(x_cur[7], axis=-1)
+            x_new[7] = x_cur[6]
+            x_new[8] = x_cur[4]
+            x_new[9] = np.flip(x_cur[8], axis=-1)
+        # (φ = φ + p), (θ = θ)
+        elif self.tta == 6:  # swap M1 and M2, M3 and M4 -> negate y and z
+            x_cur = x_new.copy()
+            x_new[0] = x_cur[3]
+            x_new[1] = x_cur[2]
+            x_new[2] = x_cur[1]
+            x_new[3] = x_cur[0]
+            x_new[4] = np.flip(x_cur[9], axis=-1)
+            x_new[5] = np.flip(x_cur[8], axis=-1)
+            x_new[6] = np.flip(x_cur[6], axis=-1)
+            x_new[7] = np.flip(x_cur[7], axis=-1)
+            x_new[8] = np.flip(x_cur[5], axis=-1)
+            x_new[9] = np.flip(x_cur[4], axis=-1)
+        # (φ = -φ + p), (θ = -θ)
+        elif self.tta == 7:  # swap M1 and M2, M3 and M4 -> negate y and z
+            x_cur = x_new.copy()
+            x_new[0] = x_cur[2]
+            x_new[1] = x_cur[3]
+            x_new[2] = x_cur[0]
+            x_new[3] = x_cur[1]
+            x_new[4] = x_cur[9]
+            x_new[5] = np.flip(x_cur[5], axis=-1)
+            x_new[6] = np.flip(x_cur[7], axis=-1)
+            x_new[7] = np.flip(x_cur[6], axis=-1)
+            x_new[8] = np.flip(x_cur[8], axis=-1)
+            x_new[9] = x_cur[4]
         # change y_doa
         if y_doa.shape[1] == 3 * self.n_classes:  # classwise reg_xyz, accdoa
-            if tta == 1: # swap M2 and M3 -> swap x and y
+            if self.tta == 1: # swap M2 and M3 -> swap x and y
                 y_doa_new[:, 0:self.n_classes] = y_doa[:, self.n_classes:2*self.n_classes]
                 y_doa_new[:, self.n_classes:2*self.n_classes] = y_doa[:, :self.n_classes]
-            elif tta == 2:  # swap M1 and M4 -> swap x and y, negate x and y
+            elif self.tta == 2:  # swap M1 and M4 -> swap x and y, negate x and y
                 temp = - y_doa_new[:, 0:self.n_classes].copy()
                 y_doa_new[:, 0:self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
                 y_doa_new[:, self.n_classes:2 * self.n_classes] = temp
-            elif tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
+            elif self.tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
                 y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
                 y_doa_new[:, 2 * self.n_classes:] = - y_doa_new[:, 2 * self.n_classes:]
         else:
