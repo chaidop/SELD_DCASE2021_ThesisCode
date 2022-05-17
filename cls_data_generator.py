@@ -295,6 +295,8 @@ class DataGenerator(object):
                                     break
                         label = temp_label_full[:label.shape[0]+len(self.augm_indx)-1,:,:]
                         
+                    #17/5/2022 CUSTOM add temp variable to keep the y_Sed->needed for tta
+                    y_sed = label[:, :, :self._nb_classes]
                     if self._is_accdoa:
                         mask = label[:, :, :self._nb_classes]
                         mask = np.tile(mask, 3)
@@ -307,14 +309,16 @@ class DataGenerator(object):
                              ]
 
                     #14/5/2022 CUSTOM for each batch of feat and labels, do tta with ACS (GccRandomSwapMic)
+                    #(10, 60, 36)=(C, T, F) label size
                     if self.tta > 0:
                         was_augm = False
+                        #np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
                         feat_news, label_seds, label_doas, label_news = [], [], [], []
-                        for i in range(label[0]):
+                        for i in range(label.shape[0]):
                             if self.tta == 1:
-                                feat_new, label_sed, label_doa, was_augm = GccRandomSwapChannelMic()(x = feat[i,:,:,:], y_sed= label[i,:,:self._nb_classes], y_doa= label[i,:,self._nb_classes:])
+                                feat_new, label_sed, label_doa, was_augm = GccRandomSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
                             elif self.tta == 2:
-                                feat_new, label_sed, label_doa, was_augm = TfmapRandomSwapChannelMic()(x = feat[i,:7,:,:], y_sed= label[i,:,:self._nb_classes], y_doa= label[i,:,self._nb_classes:])
+                                feat_new, label_sed, label_doa, was_augm = TfmapRandomSwapChannelMic(always_apply=True)(x = feat[i,:7,:,:], y_sed= y_sed[i,:7,:,:], y_doa= label[i,:7,:,:])
                             feat_news.append((feat_new))
                             label_seds.append((label_sed))
                             label_doas.append((label_doa))

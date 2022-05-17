@@ -5,6 +5,7 @@
 import os
 import sys
 import numpy as np
+from sklearn import ensemble
 import cls_feature_class
 import cls_data_generator
 from cls_compute_seld_results import ComputeSELDResults, reshape_3Dto2D
@@ -16,7 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import swa
-
+from keras.models import Model
 global history 
 
 import tensorflow
@@ -34,6 +35,12 @@ class LossHistory(tensorflow.keras.callbacks.Callback):
 
 history=LossHistory()
 import tensorflow
+def freeze_layers(model):
+    for i in model.layers:
+        i.trainable = False
+        if isinstance(i, Model):
+            freeze_layers(i)
+    return model
 
 # learning rate schedule
 def step_decay(losses):
@@ -47,6 +54,10 @@ def step_decay(losses):
     else:
         print('hist loss ',history.losses[-1])
         lrate=0.0001
+        return lrate
+#after 15 consecutive epochs, halfes the lr
+def step_decay_half(losses):
+        lrate=0.5*lrate
         return lrate
 lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
 
@@ -141,7 +152,7 @@ def main(argv):
         print('Loading training dataset:')
         
         data_gen_train = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True
+            params=params, split=train_splits[split_cnt], train=True,
         )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
@@ -200,7 +211,7 @@ def main(argv):
             
             #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'], True, checkpoint_path)
         # start training
-        model.load_weights('models/2_resnet34_conformer_gru_16attn31_mic_dev_split6_model.h5')
+        model.load_weights('models/2_vanilla_da1_2_mic_dev_split6_model.h5')
         for epoch_cnt in range(nb_epoch):
             start = time.time()
             ##CUSTOM 
@@ -213,6 +224,7 @@ def main(argv):
                                                             # save_weights_only=True,
                                                             # verbose=1,save_freq='epoch')
             # train once per epoch
+            
             hist = model.fit_generator(
                 generator=data_gen_train.generate(),
                 steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
@@ -220,7 +232,9 @@ def main(argv):
                 verbose=2,
                 callbacks=[history,lrate]
             )
-            
+            if params['agc'] == True:
+                # train loop
+                print()
             #CUSTOM
             #model.save('model_checkpoint/checkpoint{epoch_cnt:04d}.h5')
             swa_obj.on_epoch_end(epoch_cnt)
@@ -229,6 +243,7 @@ def main(argv):
             ##CUSTOM plot loss
             #pd.DataFrame(hist.history).plot()
             #plt.title("Loss over time")
+
             history_dict = hist.history
             print(history_dict.keys())
             # summarize history for loss
@@ -278,8 +293,12 @@ def main(argv):
             )
             if patience_cnt > params['patience']:
                 break
-            model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
-
+            #17/5/2022
+            model_freezed = freeze_layers(model)
+            model_freezed.save(model_name + 'model')
+            print('model saved i hope or imma kms')
+            #model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
+        '''
         print('\nResults on validation split:')
         print('\tUnique_name: {} '.format(unique_name))
         print('\tSaved model for the best_epoch: {}'.format(best_epoch))
@@ -288,17 +307,19 @@ def main(argv):
         print('\n\tDCASE2021 scores')
         print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(seld_metric[best_epoch, 2], seld_metric[best_epoch, 3]*100))
         print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(seld_metric[best_epoch, 0], seld_metric[best_epoch, 1]*100))
+        '''
 
         # ------------------  Calculate metric scores for unseen test split ---------------------------------
         print('\nLoading the best model and predicting results on the testing split')
         print('\tLoading testing dataset:')
         #15/5/2022
         #CUSTOM update to swa weights before test
-        swa_obj.on_train_end()
+        #swa_obj.on_train_end()
         data_gen_test = cls_data_generator.DataGenerator(
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
-        
+        data_int, data_outt = data_gen_test.get_data_sizes()
+        print('TEST FEATURES:\n\tdata_in: {}\n\tdata_out: {}\n'.format(data_int, data_outt))
         print(unique_name)
         #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
         # predict once per epoch
@@ -307,7 +328,8 @@ def main(argv):
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
             verbose=2
         )
-        if params['tta'] is True:
+        if params['tta'] == True:
+            print('TTA HERE' )
             predictions = []
             data_gen_test_tta1 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 1, is_eval=True if params['mode'] is 'eval' else False
@@ -326,12 +348,13 @@ def main(argv):
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             )
+            print('tta: ',pred_test_tta1)
             predictions.append(pred_test)
             predictions.append(pred_test_tta1)
             predictions.append(pred_test_tta2)
 
             pred_test = np.mean(predictions, axis=0)
-
+            print(pred_test)
             #np.mean(np.equal(np.argmax(y_val, axis=-1), np.argmax(pred_test, axis=-1)))
             
         if params['is_accdoa']:
@@ -359,8 +382,9 @@ def main(argv):
             print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(test_seld_metric[2], test_seld_metric[3]*100))
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
-    
+        
     model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
+    model.save(model_name + 'model')
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))
