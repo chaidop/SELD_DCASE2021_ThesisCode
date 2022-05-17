@@ -233,7 +233,7 @@ class DataGenerator(object):
                     for j in range(self._label_batch_seq_len):
                         label[j, :] = self._circ_buf_label.popleft()
 
-                    #(19200, 10, 64) (BATCH_SEQ_LEN, CHAN, MEL_BINS)
+                    #(19200, 10, 64) (BATCH+SEQ_LEN, CHAN, MEL_BINS)
                     feat = np.reshape(feat, (self._feature_batch_seq_len, self._nb_ch, self._nb_mel_bins)).transpose((0, 2, 1))
 
                     # Split to sequences
@@ -309,21 +309,23 @@ class DataGenerator(object):
                              ]
 
                     #14/5/2022 CUSTOM for each batch of feat and labels, do tta with ACS (GccRandomSwapMic)
-                    #(10, 60, 36)=(C, T, F) label size
+                    #(10, 60, 36)=(B, T, F) label size
+                    #(10, 60, 36)=(B, C, T, F) feat size
                     if self.tta > 0:
-                        was_augm = False
                         #np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
-                        feat_news, label_seds, label_doas, label_news = [], [], [], []
+                        feat_news = np.zeros((label.shape[0], self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
+                        label_seds = np.zeros((label.shape[0], label.shape[1], self._nb_classes))
+                        label_doas = np.zeros((label.shape[0], label.shape[1], label.shape[2]))
+
                         for i in range(label.shape[0]):
                             if self.tta == 1:
-                                feat_new, label_sed, label_doa, was_augm = GccRandomSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:] = GccSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:], tta = self.tta)
                             elif self.tta == 2:
-                                feat_new, label_sed, label_doa, was_augm = TfmapRandomSwapChannelMic(always_apply=True)(x = feat[i,:7,:,:], y_sed= y_sed[i,:7,:,:], y_doa= label[i,:7,:,:])
-                            feat_news.append((feat_new))
-                            label_seds.append((label_sed))
-                            label_doas.append((label_doa))
-                            label_news.append((label_sed, label_doa))
-                        feat, label = feat_news, label_news
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:] = GccSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:], tta = self.tta)
+                            elif self.tta == 3:
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:] = GccSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:], tta = self.tta)
+                        
+                        feat, label = feat_news, label_doas
 
                     yield feat, label
 

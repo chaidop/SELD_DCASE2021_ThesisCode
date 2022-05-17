@@ -687,7 +687,7 @@ class GccRandomSwapChannelMic(MapDataAugmentBase):
             x_new[-1] = x[-2]
             x_new[-2] = x[-1]
         # (φ = -φ - π/2), (θ = θ)
-        elif m[1] == 1:  # swap M1 and M4 -> swap x and y, negate x and y
+        if m[1] == 1:  # swap M1 and M4 -> swap x and y, negate x and y
             x_cur = x_new.copy()
             x_new[0] = x_cur[3]
             x_new[3] = x_cur[0]
@@ -697,7 +697,7 @@ class GccRandomSwapChannelMic(MapDataAugmentBase):
             x_new[8] = np.flip(x_cur[4], axis=-1)
             x_new[9] = np.flip(x_cur[5], axis=-1)
         # (φ = -φ), (θ = -θ)
-        elif m[2] == 1:  # swap M1 and M2, M3 and M4 -> negate y and z
+        if m[2] == 1:  # swap M1 and M2, M3 and M4 -> negate y and z
             x_cur = x_new.copy()
             x_new[0] = x_cur[1]
             x_new[1] = x_cur[0]
@@ -719,6 +719,102 @@ class GccRandomSwapChannelMic(MapDataAugmentBase):
                 y_doa_new[:, 0:self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
                 y_doa_new[:, self.n_classes:2 * self.n_classes] = temp
             if m[2] == 1:  # swap M1 and M2, M3 and M4 -> negate y and z
+                y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
+                y_doa_new[:, 2 * self.n_classes:] = - y_doa_new[:, 2 * self.n_classes:]
+        else:
+            raise NotImplementedError('this doa format not yet implemented')
+
+        return x_new, y_sed, y_doa_new
+
+class GccSwapChannelMic(MapDataAugmentBase):
+    """
+    This data augmentation random swap channels of melspecgcc or linspecgcc of MIC format.
+    """
+    def __init__(self, always_apply: bool = False, p: float = 0.5, n_classes: int = 12):
+        super().__init__(always_apply, p)
+        self.n_classes = n_classes
+
+    def reflect_azi(self, azi, n_azis: int = 72):
+        """reflect azi for eventwise clapolar format: azi -> -azi
+        azi: (n_timesteps, n_azis, n_max_event)
+        n_azis: even number"""
+        azi = np.concatenate((np.flip(azi[:, n_azis//2 + 1:], axis=1),
+                              np.flip(azi[:, :n_azis//2 + 1], axis=1)), axis=1)
+        return azi
+
+    def shift_azi(self, azi, azi_shift_deg, n_azis: int = 72):
+        n_shifts = n_azis * azi_shift_deg // 360
+        azi = np.concatenate((azi[:, -n_shifts:], azi[:, :-n_shifts]), axis=1)
+        return azi
+
+    def reflect_ele(self, ele, n_eles: int = 19):
+        """reflect ele for eventwise clapolar format: ele -> -ele
+        ele: (n_timesteps, n_eles, n_max_event)
+        n_eles: odd number"""
+        ele = np.concatenate((np.flip(ele[:, n_eles//2 + 1:], axis=1),
+                              np.flip(ele[:, :n_eles//2 + 1], axis=1)), axis=1)
+        return ele
+
+    def apply(self, tta , x: np.ndarray, y_sed: np.ndarray, y_doa: np.ndarray):
+        """
+        :param x < np.ndarray (n_channels, n_time_steps, n_features)>
+        :param y_nevent: <np.ndarray (n_time_steps, )>
+        Class-wise:
+            y_sed: <np.ndarray (n_time_steps, n_classes)> reg_xyz, reg_polar, accdoa, reg_accdoa, cla_polar
+            y_doa: <np.ndarray (n_time_steps, 3*n_classes)> reg_xyz, accdoa, reg_accdoa
+        This data augmentation change x and y_doa
+        x: x[0]: M1, x[1] = M2, x[2]: M3, x[3]: M4
+            M1 M2 M3 M4 xc12 xc13 xc14 xc23 xc24 xc34: 10 channels
+        M1: n_timesteps x n_mels
+        xc12: n_timesteps x n_lags (n_mels = n_lags)
+        """
+        n_input_channels = x.shape[0]
+        assert n_input_channels == 10, 'invalid input channel: {}'.format(n_input_channels)
+        x_new = x.copy()
+        y_doa_new = y_doa.copy()
+        # random method
+        # (φ = -φ + π/2), (θ = θ) see table 1 in paper mentioned above
+        if tta == 1:  # swap M2 and M3 -> swap x and y
+            x_new[1] = x[2]
+            x_new[2] = x[1]
+            x_new[4] = x[5]
+            x_new[5] = x[4]
+            x_new[7] = np.flip(x[7], axis=-1)
+            x_new[-1] = x[-2]
+            x_new[-2] = x[-1]
+        # (φ = -φ - π/2), (θ = θ)
+        elif tta == 2:  # swap M1 and M4 -> swap x and y, negate x and y
+            x_cur = x_new.copy()
+            x_new[0] = x_cur[3]
+            x_new[3] = x_cur[0]
+            x_new[4] = np.flip(x_cur[8], axis=-1)
+            x_new[5] = np.flip(x_cur[9], axis=-1)
+            x_new[6] = np.flip(x_cur[6], axis=-1)
+            x_new[8] = np.flip(x_cur[4], axis=-1)
+            x_new[9] = np.flip(x_cur[5], axis=-1)
+        # (φ = -φ), (θ = -θ)
+        elif tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
+            x_cur = x_new.copy()
+            x_new[0] = x_cur[1]
+            x_new[1] = x_cur[0]
+            x_new[2] = x_cur[3]
+            x_new[3] = x_cur[2]
+            x_new[4] = np.flip(x_cur[4], axis=-1)
+            x_new[5] = x_cur[8]
+            x_new[6] = x_cur[7]
+            x_new[7] = x_cur[6]
+            x_new[8] = x_cur[5]
+            x_new[9] = np.flip(x_cur[9], axis=-1)
+        # change y_doa
+        if y_doa.shape[1] == 3 * self.n_classes:  # classwise reg_xyz, accdoa
+            if tta == 1: # swap M2 and M3 -> swap x and y
+                y_doa_new[:, 0:self.n_classes] = y_doa[:, self.n_classes:2*self.n_classes]
+                y_doa_new[:, self.n_classes:2*self.n_classes] = y_doa[:, :self.n_classes]
+            elif tta == 2:  # swap M1 and M4 -> swap x and y, negate x and y
+                temp = - y_doa_new[:, 0:self.n_classes].copy()
+                y_doa_new[:, 0:self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
+                y_doa_new[:, self.n_classes:2 * self.n_classes] = temp
+            elif tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
                 y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
                 y_doa_new[:, 2 * self.n_classes:] = - y_doa_new[:, 2 * self.n_classes:]
         else:
