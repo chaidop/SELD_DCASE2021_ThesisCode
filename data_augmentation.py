@@ -547,7 +547,7 @@ class TfmapRandomSwapChannelMic(MapDataAugmentBase):
     """
     This data augmentation random swap channels of tfmap of MIC format.
     """
-    def __init__(self, always_apply: bool = False, p: float = 0.5, n_classes: int = 12):
+    def __init__(self, always_apply: bool = True, p: float = 0.5, n_classes: int = 12):
         super().__init__(always_apply, p)
         self.n_classes = n_classes
 
@@ -628,7 +628,7 @@ class TfmapRandomSwapChannelMic(MapDataAugmentBase):
 
         return x_new, y_sed, y_doa_new
 
-
+#https://arxiv.org/pdf/2101.02919.pdf
 class GccRandomSwapChannelMic(MapDataAugmentBase):
     """
     This data augmentation random swap channels of melspecgcc or linspecgcc of MIC format.
@@ -677,6 +677,7 @@ class GccRandomSwapChannelMic(MapDataAugmentBase):
         y_doa_new = y_doa.copy()
         # random method
         m = np.random.randint(2, size=(3,))
+        # (φ = -φ + π/2), (θ = θ) see table 1 in paper mentioned above
         if m[0] == 1:  # swap M2 and M3 -> swap x and y
             x_new[1] = x[2]
             x_new[2] = x[1]
@@ -685,6 +686,7 @@ class GccRandomSwapChannelMic(MapDataAugmentBase):
             x_new[7] = np.flip(x[7], axis=-1)
             x_new[-1] = x[-2]
             x_new[-2] = x[-1]
+        # (φ = -φ - π/2), (θ = θ)
         elif m[1] == 1:  # swap M1 and M4 -> swap x and y, negate x and y
             x_cur = x_new.copy()
             x_new[0] = x_cur[3]
@@ -694,6 +696,7 @@ class GccRandomSwapChannelMic(MapDataAugmentBase):
             x_new[6] = np.flip(x_cur[6], axis=-1)
             x_new[8] = np.flip(x_cur[4], axis=-1)
             x_new[9] = np.flip(x_cur[5], axis=-1)
+        # (φ = -φ), (θ = -θ)
         elif m[2] == 1:  # swap M1 and M2, M3 and M4 -> negate y and z
             x_cur = x_new.copy()
             x_new[0] = x_cur[1]
