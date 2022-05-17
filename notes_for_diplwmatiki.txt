@@ -349,6 +349,12 @@ Zhang:  we extract 64 log-Mel
 		
 		train the weight parameters of the ensemble model,
 		the predictions of the training set were used by adopting the cross-validation setup
+		
+		
+'Since each sound event has different characteristics, such as its temporal structures, the optimal post-processing parameters depend on the individual sound event classes. Hence, we
+determine the optimal post-processing parameters for each sound
+event using the validation set by searching for the optimal threshold
+(from 0.1 to 0.9 in increments of 0.1)'
 =============================== WHAT TO TRY ===============================
 APPROACHES: Bai uses Resnet34 with different SED and DOA branch->try with different SED and DOA branch
 Huang uses Squeeze-Excitation block and modified Residual block
