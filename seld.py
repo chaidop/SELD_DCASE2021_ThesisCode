@@ -5,7 +5,6 @@
 import os
 import sys
 import numpy as np
-from sklearn import ensemble
 import cls_feature_class
 import cls_data_generator
 from cls_compute_seld_results import ComputeSELDResults, reshape_3Dto2D
@@ -17,13 +16,48 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import swa
-from keras.models import Model
 global history 
-
+from keras.models import Model
 import tensorflow
 import math
 
 sd=[]
+def freeze_layers(model):
+    for i in model.layers:
+        i.trainable = False
+        if isinstance(i, Model):
+            freeze_layers(i)
+    return model
+#Kos ensembling bDNN
+@tf.function
+def predict(model, x, batch_size, win_size, step_size):
+    windows = tf.signal.frame(x, win_size, step_size, axis=0)
+
+    accdoa = []
+    for i in range(int(np.ceil(windows.shape[0]/batch_size))):
+        ac = model(windows[i*batch_size:(i+1)*batch_size], training=False)
+        accdoa.append(ac)
+    accdoa = tf.concat(accdoa, axis=0)
+
+    # windows to seq
+    total_counts = tf.signal.overlap_and_add(
+        tf.ones((accdoa.shape[0], win_size//step_size), dtype=accdoa.dtype),
+        1)[..., tf.newaxis]
+    accdoa = tf.signal.overlap_and_add(tf.transpose(accdoa, (2, 0, 1)), 1)
+    accdoa = tf.transpose(accdoa, (1, 0)) / total_counts
+
+    return accdoa
+
+def ensemble_outputs(model, xs: list,
+                     win_size=300, step_size=5, batch_size=4):
+    # assume 0th dim of each sample is time dim
+    accdoas = []
+
+    for x in xs:
+        accdoa = predict(model, x, batch_size, win_size, step_size)
+        accdoas.append(accdoa)
+
+    return list(accdoa)
 class LossHistory(tensorflow.keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
         self.losses = [1,1]
@@ -35,29 +69,19 @@ class LossHistory(tensorflow.keras.callbacks.Callback):
 
 history=LossHistory()
 import tensorflow
-def freeze_layers(model):
-    for i in model.layers:
-        i.trainable = False
-        if isinstance(i, Model):
-            freeze_layers(i)
-    return model
 
 # learning rate schedule
 def step_decay(losses):
     print('decay ')
     if float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
         print('changed')
-        lrate=0.0001*1/(1+0.01*len(history.losses))
+        lrate=0.0001*1/(1+0.001*len(history.losses))
         momentum=0.8
         decay_rate=2e-6
         return lrate
     else:
         print('hist loss ',history.losses[-1])
         lrate=0.0001
-        return lrate
-#after 15 consecutive epochs, halfes the lr
-def step_decay_half(losses):
-        lrate=0.5*lrate
         return lrate
 lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
 
@@ -83,10 +107,10 @@ def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred
         _data_gen.write_output_format_file(output_file, output_dict)
     return
 
-
+#17/5/2022 Kos apply adaptive threshold
 def get_accdoa_labels(accdoa_in, nb_classes):
     x, y, z = accdoa_in[:, :, :nb_classes], accdoa_in[:, :, nb_classes:2*nb_classes], accdoa_in[:, :, 2*nb_classes:]
-    sed = np.sqrt(x**2 + y**2 + z**2) > 0.5
+    sed = np.sqrt(x**2 + y**2 + z**2) > [0.35, 0.36, 0.3, 0.4, 0.65, 0.6, 0.45, 0.55, 0.3, 0.3, 0.45, 0.3] #0.5
       
     return sed, accdoa_in
 
@@ -152,12 +176,21 @@ def main(argv):
         print('Loading training dataset:')
         
         data_gen_train = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True,
+            params=params, split=train_splits[split_cnt], train=True, 
         )
+        
+        if params['model_approach'] == 4:
+            data_gen_train2 = cls_data_generator.DataGenerator(
+            params=params, split=train_splits[split_cnt], train=True,
+            )
+            data_gen_train3 = cls_data_generator.DataGenerator(
+            params=params, split=train_splits[split_cnt], train=True,
+            )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
             params=params, split=val_splits[split_cnt], shuffle=False, per_file=True, is_eval=False
         )
+        
         # Collect the reference labels for validation data
         data_in, data_out = data_gen_train.get_data_sizes()
         print('FEATURES:\n\tdata_in: {}\n\tdata_out: {}\n'.format(data_in, data_out))
@@ -167,6 +200,7 @@ def main(argv):
             params['dropout_rate'], params['nb_cnn2d_filt'], params['f_pool_size'], params['t_pool_size'], params['rnn_size'],
             params['fnn_size'], params['doa_objective']))
 
+        
         print('Using loss weights : {}'.format(params['loss_weights']))
         model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
@@ -177,8 +211,7 @@ def main(argv):
                                       decoder = params['decoder'],
                                       dconv_kernel_size = params['dconv_kernel_size'],
                                       nb_conf = params['nb_conf'],
-                                      simple_parallel=params['simple_parallel'])
-
+                                      simple_parallel = params['simple_parallel'])
         # stochastic weight averaging
         swa_start_epoch = 10
         swa_freq = 2
@@ -210,9 +243,8 @@ def main(argv):
             #saving only the weights since i have custom AdaBelief optimizer and it gives warning
             model.load_weights(latest)
             
-            #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'], True, checkpoint_path)
-        # start training
         #model.load_weights('models/2_resnet2020_conformer_gru_da2_mic_dev_split6_model.h5')
+        # start training
         for epoch_cnt in range(nb_epoch):
             start = time.time()
             ##CUSTOM 
@@ -225,7 +257,6 @@ def main(argv):
                                                             # save_weights_only=True,
                                                             # verbose=1,save_freq='epoch')
             # train once per epoch
-            
             hist = model.fit_generator(
                 generator=data_gen_train.generate(),
                 steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
@@ -233,34 +264,33 @@ def main(argv):
                 verbose=2,
                 callbacks=[history,lrate]
             )
-            if params['agc'] == True:
-                # train loop
-                print()
-            #CUSTOM
-            #model.save('model_checkpoint/checkpoint{epoch_cnt:04d}.h5')
             swa_obj.on_epoch_end(epoch_cnt)
+            #CUSTOM
+            model.save_weights(model_name)#modified because of memoryerror, it was save instead
+            
             tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
-            model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
+           
             ##CUSTOM plot loss
             #pd.DataFrame(hist.history).plot()
             #plt.title("Loss over time")
-
             history_dict = hist.history
             print(history_dict.keys())
             # summarize history for loss
+            matplotlib.use('TkAgg')
             plt.plot(hist.history['loss'])
             plt.title('model loss')
             plt.ylabel('loss')
             plt.xlabel('epoch')
             plt.legend(['train', 'test'], loc='upper left')
-            plt.show()
-              
+
+            
+            # predict once per epoch
             pred = model.predict_generator(
                 generator=data_gen_val.generate(),
                 steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
                 verbose=2
             )
-
+            
             if params['is_accdoa']:
                 sed_pred, doa_pred = get_accdoa_labels(pred, nb_classes)
                 sed_pred = reshape_3Dto2D(sed_pred)
@@ -298,8 +328,6 @@ def main(argv):
             model_freezed = freeze_layers(model)
             model_freezed.save(model_name + 'model')
             print('model saved i hope or imma kms')
-            #model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
-        '''
         print('\nResults on validation split:')
         print('\tUnique_name: {} '.format(unique_name))
         print('\tSaved model for the best_epoch: {}'.format(best_epoch))
@@ -308,22 +336,34 @@ def main(argv):
         print('\n\tDCASE2021 scores')
         print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(seld_metric[best_epoch, 2], seld_metric[best_epoch, 3]*100))
         print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(seld_metric[best_epoch, 0], seld_metric[best_epoch, 1]*100))
-        '''
 
         # ------------------  Calculate metric scores for unseen test split ---------------------------------
         print('\nLoading the best model and predicting results on the testing split')
         print('\tLoading testing dataset:')
-        #15/5/2022
-        #CUSTOM update to swa weights before test
-        #swa_obj.on_train_end()
+
+        #Kos aggregation
+        if params['aggregation'] == True:
+            outs = []
+            outs.append(ensemble_outputs(model, data_gen_test, batch_size=params['batch_size']))
+            #del model
+            
+            outs1 = [outs[0]]
+            outputs = []
+            outs2 = list(zip(*outs1))
+            for out in outs2:
+                accdoa = list(zip(*out))
+                accdoa = tf.add_n(accdoa) / len(accdoa)
+                outputs.append((accdoa))
+
+            print(outputs)
+        #####
         data_gen_test = cls_data_generator.DataGenerator(
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
-        data_int, data_outt = data_gen_test.get_data_sizes()
-        print('TEST FEATURES:\n\tdata_in: {}\n\tdata_out: {}\n'.format(data_int, data_outt))
+        
         print(unique_name)
+
         #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
-        # predict once per epoch
         pred_test = model.predict_generator(
             generator=data_gen_test.generate(),
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
@@ -349,15 +389,41 @@ def main(argv):
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             )
-            print('tta: ',pred_test_tta1)
+
+            data_gen_test_tta3 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 3, is_eval=True if params['mode'] is 'eval' else False
+            )
+            pred_test_tta3 = model.predict_generator(
+                generator=data_gen_test_tta3.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            )
+            print('tta: ',pred_test_tta1.shape)
+            print('tta: ',pred_test_tta2.shape)
+            print('tta: ',pred_test_tta3.shape)
+            print('tta: ',pred_test.shape)
             predictions.append(pred_test)
             predictions.append(pred_test_tta1)
             predictions.append(pred_test_tta2)
+            predictions.append(pred_test_tta3)
 
             pred_test = np.mean(predictions, axis=0)
             print(pred_test)
             #np.mean(np.equal(np.argmax(y_val, axis=-1), np.argmax(pred_test, axis=-1)))
-            
+        if params['model_approach'] == 40:
+            #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
+            pred_test2 = model2.predict_generator(
+                generator=data_gen_test.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            )
+            pred_test3 = model3.predict_generator(
+                generator=data_gen_test.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            )
+            #pred_test = (pred_test + pred_test2 + pred_test3)//3
+
         if params['is_accdoa']:
             test_sed_pred, test_doa_pred = get_accdoa_labels(pred_test, nb_classes)
             test_sed_pred = reshape_3Dto2D(test_sed_pred)
@@ -383,8 +449,9 @@ def main(argv):
             print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(test_seld_metric[2], test_seld_metric[3]*100))
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
-        
-    model.save_weights(model_name)#instead of save, because i get MemoryError related to RAM
+    plt.show()
+    #swa.on_train_end(model, swa_weights)
+    model.save_weights(model_name)#modified because of memoryerror, it was save instead
     model.save(model_name + 'model')
 if __name__ == "__main__":
     try:
