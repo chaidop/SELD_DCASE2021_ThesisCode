@@ -3,9 +3,11 @@
 #
 # The first ensemble is baseline and pseudoresnet34
 
+from operator import mod
 import os
 import sys
 import numpy as np
+from tensorboard import summary
 import cls_feature_class
 import cls_data_generator
 from cls_compute_seld_results import ComputeSELDResults, reshape_3Dto2D
@@ -16,6 +18,7 @@ import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+import keras
 from keras.models import load_model
 
 global history 
@@ -38,6 +41,21 @@ class LossHistory(tensorflow.keras.callbacks.Callback):
 history=LossHistory()
 import tensorflow
 
+
+def get_model(params, data_in, data_out, app):
+    import keras
+    keras.backend.set_image_data_format('channels_first')
+    model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
+                                      model_approach=app,
+                                      depth = params['nb_conf'],
+                                      decoder = 0,
+                                      dconv_kernel_size = params['dconv_kernel_size'],
+                                      nb_conf = params['nb_conf'],
+                                      simple_parallel=params['simple_parallel'])
+    return model
 # learning rate schedule
 def step_decay(losses):
     print('decay ')
@@ -201,52 +219,43 @@ def main(argv):
         nb_epoch = 2 if params['quick_test'] else params['nb_epochs']
         tr_loss = np.zeros(nb_epoch)
         seld_metric = np.zeros((nb_epoch, 5))
-
-        #Load the wanted models
-        
-        model3 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
-                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
-                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
-                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                      model_approach=6,
-                                      depth = params['nb_conf'],
-                                      decoder = params['decoder'],
-                                      dconv_kernel_size = params['dconv_kernel_size'],
-                                      nb_conf = params['nb_conf'],
-                                      simple_parallel=False)
-        model2 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
-                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
-                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
-                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                      model_approach=2,
-                                      depth = params['nb_conf'],
-                                      decoder = 1,
-                                      dconv_kernel_size = params['dconv_kernel_size'],
-                                      nb_conf = params['nb_conf'],
-                                      simple_parallel=params['simple_parallel'])
-        
-        print('hey1')
-        #model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
-        print('done')
-        
+                
         data_gen_test = cls_data_generator.DataGenerator(
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
-        print(unique_name)
-        """
-        model2 = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+        #Load the wanted models
+        model2 = get_model(params, data_in, data_out, 7, 0)
+        '''
+        keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
                                       rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
                                       weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                      model_approach=2,
+                                      model_approach=7,
                                       depth = params['nb_conf'],
                                       decoder = 0,
                                       dconv_kernel_size = params['dconv_kernel_size'],
-                                      nb_conf = params['nb_conf'])
-        print("hey")
-        """
-        model2.load_weights(params['model_dir']+'2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5'.format(unique_name))
-        model3.load_weights(params['model_dir']+'2_ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
+                                      nb_conf = params['nb_conf'],
+                                      simple_parallel=params['simple_parallel'])
+'''
+        model2._name = 'imuseless'
+        print('model2 done')
+        #model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
+        model2.load_weights(params['model_dir']+'2_resnet2020_conformer_gru_da2_mic_dev_split6_model.h5')
+        print('weights2 done')
+        #model2 = keras_model.load_model(filepath='models/2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5')
+        model2.summary()
+        print('model2 done', unique_name)
+        
+        model3 = get_model(params, data_in, data_out, 2, 1)
+                                    
+        #model3._name = 'illkillmyself'
+        
+        print('model3 done')
+        model3.load_weights(params['model_dir']+'2_vanilla_mic_dev_split6_model.h5')
+        print('weights3 done')
+        model3.summary()
+        print('model3 done', unique_name)
+        #model3.save(params['model_dir']+'2_ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
         
         ##ensembling
         models = [model2, model3]
@@ -254,6 +263,7 @@ def main(argv):
         from keras.layers import Input, Average
         from keras.models import Model
         model_input = Input(shape=( data_in[-3], data_in[-2], data_in[-1]))
+        print(model_input)
         model_outputs = [model(model_input) for model in models] #list of models outputs
         ensemble_output = Average()(model_outputs)
         ensemble_model = Model(inputs=model_input, outputs=ensemble_output)
@@ -291,12 +301,12 @@ def main(argv):
             data_gen_test_tta2 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 2, is_eval=True if params['mode'] is 'eval' else False
             )
-            pred_test_tta1 = model.predict_generator(
+            pred_test_tta1 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta1.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             ) 
-            pred_test_tta2 = model.predict_generator(
+            pred_test_tta2 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta2.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
