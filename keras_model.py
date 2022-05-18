@@ -24,6 +24,8 @@ from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 
 from neural_models.models import Conformer, Conformer_fun
 from neural_models.conformer_tf import *
+from neural_models.dense_conv import DenseNet
+
 '''
 config = ConfigProto()
 config.gpu_options.allow_growth = 0.5
@@ -645,6 +647,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
         spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
         spec_cnn = Dense(36, activation = 'tanh')(spec_cnn)
+    elif model_approach == 8:
+        print(spec_cnn)
+        spec_cnn = DenseNet(inputs = spec_cnn, growth_rate=nb_cnn2d_filt//2, layers=2, nb_filters=nb_cnn2d_filt)
+        spec_cnn = Dense(128, kernel_regularizer=tf.keras.regularizers.l2(0.001))(spec_cnn)
     # RNN
     #print(spec_cnn)
     print("data_out[-2]:")
