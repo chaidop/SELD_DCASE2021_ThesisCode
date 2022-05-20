@@ -456,7 +456,7 @@ class MapDataAugmentBase:
             if np.random.rand() < self.p:
                 return self.apply(x=x, y_sed=y_sed, y_doa=y_doa)
             else:
-                return x, y_sed, y_doa
+                return x, y_sed, y_doa, False
 
     def apply(self, x: np.ndarray, y_sed: np.ndarray, y_doa: np.ndarray):
         """
@@ -807,7 +807,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
             x_new[8] = x_cur[5]
             x_new[9] = np.flip(x_cur[9], axis=-1)
         # (φ = φ -p/2), (θ = -θ)
-        elif self.tta == 4:  # swap M1 and M2, M3 and M4 -> negate y and z
+        elif self.tta == 4:  # swap M1 and M2, M2 and M4, M3 and M1, M4 and M3 -> swap x and y, negate y and z
             x_cur = x_new.copy()
             x_new[0] = x_cur[1]
             x_new[1] = x_cur[3]
@@ -820,7 +820,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
             x_new[8] = np.flip(x_cur[9], axis=-1)
             x_new[9] = x_cur[5]
         # (φ = φ + p/2), (θ = -θ)
-        elif self.tta == 5:  # swap M1 and M2, M3 and M4 -> negate y and z
+        elif self.tta == 5:  # swap M1 and M3, M2 and M1, M3 and M4, M4 and M2 -> swap x and y, negate x and z
             x_cur = x_new.copy()
             x_new[0] = x_cur[2]
             x_new[1] = x_cur[0]
@@ -833,7 +833,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
             x_new[8] = x_cur[4]
             x_new[9] = np.flip(x_cur[8], axis=-1)
         # (φ = φ + p), (θ = θ)
-        elif self.tta == 6:  # swap M1 and M2, M3 and M4 -> negate y and z
+        elif self.tta == 6:  # swap M1 and M4 and M2 and M3 -> swap x and y, negate x and y
             x_cur = x_new.copy()
             x_new[0] = x_cur[3]
             x_new[1] = x_cur[2]
@@ -846,7 +846,7 @@ class GccSwapChannelMic(MapDataAugmentBase):
             x_new[8] = np.flip(x_cur[5], axis=-1)
             x_new[9] = np.flip(x_cur[4], axis=-1)
         # (φ = -φ + p), (θ = -θ)
-        elif self.tta == 7:  # swap M1 and M2, M3 and M4 -> negate y and z
+        elif self.tta == 7:  # swap M1 and M3, M2 and M4, M3 -> negate x and z
             x_cur = x_new.copy()
             x_new[0] = x_cur[2]
             x_new[1] = x_cur[3]
@@ -870,7 +870,29 @@ class GccSwapChannelMic(MapDataAugmentBase):
             elif self.tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
                 y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
                 y_doa_new[:, 2 * self.n_classes:] = - y_doa_new[:, 2 * self.n_classes:]
+
+            elif self.tta == 4:  # swap M1 and M2, M2 and M4, M3 and M1, M4 and M3 -> swap x and y, negate y and z
+                y_doa_new[:, 0:self.n_classes] = y_doa[:, self.n_classes:2*self.n_classes]
+                y_doa_new[:, self.n_classes:2*self.n_classes] = -y_doa[:, :self.n_classes]
+                y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
+                y_doa_new[:, 2 * self.n_classes:] = - y_doa_new[:, 2 * self.n_classes:]
+
+            elif self.tta == 5:  # swap M1 and M3, M2 and M1, M3 and M4, M4 and M2 -> swap x and y, negate x and z
+                y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa[:,0:self.n_classes]
+                y_doa_new[:, 0:self.n_classes] = y_doa[:, self.n_classes:2 * self.n_classes]
+                y_doa_new[:, 0:self.n_classes] = - y_doa_new[:, 0:self.n_classes]
+                y_doa_new[:, 2 * self.n_classes:] = - y_doa_new[:, 2 * self.n_classes:]
+
+            elif self.tta == 6:  # swap M1 and M4 and M2 and M3 -> swap x and y, negate x and y
+                y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa[:,0:self.n_classes]
+                y_doa_new[:, 0:self.n_classes] = y_doa[:, self.n_classes:2 * self.n_classes]
+                y_doa_new[:, 0:self.n_classes] = - y_doa_new[:, 0:self.n_classes]
+                y_doa_new[:, self.n_classes:2 * self.n_classes] = - y_doa_new[:, self.n_classes:2 * self.n_classes]
+
+            elif self.tta == 7:  # swap M1 and M3, M2 and M4, M3 -> negate x and z
+                y_doa_new[:, 0:self.n_classes] = - y_doa_new[:, 0:self.n_classes]
+                y_doa_new[:, :, 2 * self.n_classes:] = - y_doa_new[:, :, 2 * self.n_classes:]
         else:
             raise NotImplementedError('this doa format not yet implemented')
 
-        return x_new, y_sed, y_doa_new
+        return x_new, y_sed, y_doa_new, True

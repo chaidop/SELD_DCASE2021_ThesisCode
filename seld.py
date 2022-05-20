@@ -22,6 +22,43 @@ import tensorflow
 import math
 
 sd=[]
+def rotate_back(y_doa, tta, n_classes):
+    y_doa_new = y_doa.copy()
+    # change y_doa
+    if y_doa.shape[-1] == 3 * n_classes:  # classwise reg_xyz, accdoa
+        if tta == 1: # swap M2 and M3 -> swap x and y
+            y_doa_new[:, :, 0:n_classes] = y_doa[:,:, n_classes:2*n_classes]
+            y_doa_new[:,:, n_classes:2*n_classes] = y_doa[:,:, :n_classes]
+        elif tta == 2:  # swap M1 and M4 -> swap x and y, negate x and y
+            temp = - y_doa_new[:,:, 0:n_classes].copy()
+            y_doa_new[:,:, 0:n_classes] = - y_doa_new[:,:, n_classes:2 * n_classes]
+            y_doa_new[:,:, n_classes:2 * n_classes] = temp
+        elif tta == 3:  # swap M1 and M2, M3 and M4 -> negate y and z
+            y_doa_new[:,:, n_classes:2 * n_classes] = - y_doa_new[:,:, n_classes:2 * n_classes]
+            y_doa_new[:,:, 2 * n_classes:] = - y_doa_new[:,:, 2 * n_classes:]
+        elif tta == 4:  # swap M1 and M2, M2 and M4, M3 and M1, M4 and M3 -> swap x and y, negate y and z
+                y_doa_new[:, 0:n_classes] = y_doa[:, n_classes:2*n_classes]
+                y_doa_new[:, n_classes:2*n_classes] = -y_doa[:, :n_classes]
+                y_doa_new[:, n_classes:2 * n_classes] = - y_doa_new[:, n_classes:2 * n_classes]
+                y_doa_new[:, 2 * n_classes:] = - y_doa_new[:, 2 * n_classes:]
+
+        elif tta == 5:  # swap M1 and M3, M2 and M1, M3 and M4, M4 and M2 -> swap x and y, negate x and z
+            y_doa_new[:, n_classes:2 * n_classes] = - y_doa[:,0:n_classes]
+            y_doa_new[:, 0:n_classes] = y_doa[:, n_classes:2 * n_classes]
+            y_doa_new[:, 0:n_classes] = - y_doa_new[:, 0:n_classes]
+            y_doa_new[:, 2 * n_classes:] = - y_doa_new[:, 2 * n_classes:]
+
+        elif tta == 6:  # swap M1 and M4 and M2 and M3 -> swap x and y, negate x and y
+            y_doa_new[:, n_classes:2 * n_classes] = - y_doa[:,0:n_classes]
+            y_doa_new[:, 0:n_classes] = y_doa[:, n_classes:2 * n_classes]
+            y_doa_new[:, 0:n_classes] = - y_doa_new[:, 0:n_classes]
+            y_doa_new[:, n_classes:2 * n_classes] = - y_doa_new[:, n_classes:2 * n_classes]
+
+        elif tta == 7:  # swap M1 and M3, M2 and M4, M3 -> negate x and z
+            y_doa_new[:, 0:n_classes] = - y_doa_new[:, 0:n_classes]
+            y_doa_new[:, :, 2 * n_classes:] = - y_doa_new[:, :, 2 * n_classes:]
+    
+    return y_doa_new
 def freeze_layers(model):
     for i in model.layers:
         i.trainable = False
@@ -176,7 +213,7 @@ def main(argv):
         print('Loading training dataset:')
         
         data_gen_train = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True, 
+            params=params, split=train_splits[split_cnt], train=True, tta=1
         )
         
         if params['model_approach'] == 4:
@@ -243,7 +280,9 @@ def main(argv):
             #saving only the weights since i have custom AdaBelief optimizer and it gives warning
             model.load_weights(latest)
             
-        #model.load_weights('models/2_resnet2020_conformer_gru_da2_mic_dev_split6_model.h5')
+        #model.load_weights('models/2_resnet2020_conformer_tta2_acs_mic_dev_split6_model.h5')
+        #model.load_weights('models/2_resnet34_tta2_acs_da1_2_mic_dev_split6_model.h5')
+        model.load_weights('models/2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
         # start training
         for epoch_cnt in range(nb_epoch):
             start = time.time()
@@ -369,46 +408,89 @@ def main(argv):
             steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
             verbose=2
         )
-        if params['tta'] == True:
-            print('TTA HERE' )
+        # TTA
+        if params['tta'] is True:
             predictions = []
             data_gen_test_tta1 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 1, is_eval=True if params['mode'] is 'eval' else False
             )
+            data_gen_test_tta2 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 2, is_eval=True if params['mode'] is 'eval' else False
+            )
+            '''data_gen_test_tta3 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 3, is_eval=True if params['mode'] is 'eval' else False
+            )
+            data_gen_test_tta4 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 4, is_eval=True if params['mode'] is 'eval' else False
+            )
+            data_gen_test_tta5 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 5, is_eval=True if params['mode'] is 'eval' else False
+            )
+            data_gen_test_tta6 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 6, is_eval=True if params['mode'] is 'eval' else False
+            )
+            data_gen_test_tta7 = cls_data_generator.DataGenerator(
+                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 7, is_eval=True if params['mode'] is 'eval' else False
+            )'''
             pred_test_tta1 = model.predict_generator(
                 generator=data_gen_test_tta1.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
-            )
-
-            data_gen_test_tta2 = cls_data_generator.DataGenerator(
-                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 2, is_eval=True if params['mode'] is 'eval' else False
-            )
+            ) 
             pred_test_tta2 = model.predict_generator(
                 generator=data_gen_test_tta2.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             )
-
-            data_gen_test_tta3 = cls_data_generator.DataGenerator(
-                params=params, split=split, shuffle=False, per_file=True, train=False, tta = 3, is_eval=True if params['mode'] is 'eval' else False
-            )
-            pred_test_tta3 = model.predict_generator(
+            '''pred_test_tta3 = model.predict_generator(
                 generator=data_gen_test_tta3.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
+            ) 
+            pred_test_tta4 = model.predict_generator(
+                generator=data_gen_test_tta4.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
             )
-            print('tta: ',pred_test_tta1.shape)
-            print('tta: ',pred_test_tta2.shape)
-            print('tta: ',pred_test_tta3.shape)
-            print('tta: ',pred_test.shape)
+            pred_test_tta5 = model.predict_generator(
+                generator=data_gen_test_tta5.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            ) 
+            pred_test_tta6 = model.predict_generator(
+                generator=data_gen_test_tta6.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            )
+            pred_test_tta7 = model.predict_generator(
+                generator=data_gen_test_tta7.generate(),
+                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+                verbose=2
+            ) 
+            '''
+            print('pred tta', pred_test.shape)
+            print('pred tta', pred_test_tta1.shape)
+            print('pred tta', pred_test_tta2.shape)
+            #rotate back
+            pred_test_tta1 = rotate_back(pred_test_tta1, tta=1, n_classes=nb_classes) 
+            pred_test_tta2 = rotate_back(pred_test_tta2, tta=2, n_classes=nb_classes)
+            #pred_test_tta3 = rotate_back(pred_test_tta3, tta=3, n_classes=nb_classes) 
+            #pred_test_tta4 = rotate_back(pred_test_tta4, tta=4, n_classes=nb_classes)
+            #pred_test_tta5 = rotate_back(pred_test_tta5, tta=5, n_classes=nb_classes) 
+            #pred_test_tta6 = rotate_back(pred_test_tta6, tta=6, n_classes=nb_classes)
+            #pred_test_tta7 = rotate_back(pred_test_tta7, tta=7, n_classes=nb_classes) 
+
             predictions.append(pred_test)
             predictions.append(pred_test_tta1)
             predictions.append(pred_test_tta2)
-            predictions.append(pred_test_tta3)
+            #predictions.append(pred_test_tta3)
+            #predictions.append(pred_test_tta4)
+            #predictions.append(pred_test_tta5)
+            #predictions.append(pred_test_tta6)
+            #predictions.append(pred_test_tta7)
 
             pred_test = np.mean(predictions, axis=0)
-            print(pred_test)
+        ##
             #np.mean(np.equal(np.argmax(y_val, axis=-1), np.argmax(pred_test, axis=-1)))
         if params['model_approach'] == 40:
             #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
@@ -452,7 +534,8 @@ def main(argv):
     plt.show()
     #swa.on_train_end(model, swa_weights)
     model.save_weights(model_name)#modified because of memoryerror, it was save instead
-    model.save(model_name + 'model')
+    model_freezed = freeze_layers(model)
+    model_freezed.save(model_name + 'model')
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))

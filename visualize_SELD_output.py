@@ -94,5 +94,11 @@ ax6 = plot.subplot(gs[3, 2:]), plot_func(pred_data, params['label_hop_len_s'], i
 ax_lst = [ax0, ax1, ax2, ax3, ax4, ax5, ax6]
 fig_file = os.path.join(params['dcase_output_dir'] , ref_filename.replace('.wav', '.jpg'))
 plot.savefig(fig_file, dpi=300, bbox_inches = "tight")
+
+# Renaming the file
+if total > 2:
+    os.rename(fig_file, './results/'+str(sys.argv[2])+'.jpg')
+    fig_file = './results/'+str(sys.argv[2])+'.jpg'
+
 print('Saved figure at : {}'.format(fig_file))
 

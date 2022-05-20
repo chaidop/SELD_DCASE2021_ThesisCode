@@ -253,7 +253,7 @@ class DataGenerator(object):
                     
                     ##CUSTOM add a data augmented feature in the array
                     #for each batch segment(64 segments) add that to specaugm
-                    if self.data_augm is not 0 and self.train:
+                    if self.data_augm > 0 and self.train:
                         temp_feat_full = np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
                         temp_label_full = np.zeros((2*feat.shape[0], self._label_seq_len, self._label_len))
                         #reset index array 
@@ -266,6 +266,7 @@ class DataGenerator(object):
                                 feat_augm, was_augm = SpecAugmentNp()(feat[j, :, :, :])
                             elif self.data_augm == 2:
                                 feat_augm, was_augm = RandomShiftUpDownNp(freq_shift_range=10)(feat[j, :, :, :])
+                            
                             if was_augm is True:
                                 counter +=1
                                 #have a list of the indexes of files that were augmented, to copy the labels on that index
@@ -286,14 +287,34 @@ class DataGenerator(object):
                         counter = 0
                         for j in range(label.shape[0]):
                             temp_label_full[j,:,:] = label[j,:,:]
-                            for i in range(1,len(self.augm_indx)):
-                                #copy the label of the previous step
-                                if self.augm_indx[i] == j :
-                                    counter+=1
-                                    temp_label_full[label.shape[0]+counter-1,:,:] = label[j,:,:]
-                                    #np.insert(label, j, [label[j,:,:]], axis=0)
-                                    break
-                        label = temp_label_full[:label.shape[0]+len(self.augm_indx)-1,:,:]
+                            if self.data_augm < 4:
+                                for i in range(1,len(self.augm_indx)):
+                                    #copy the label of the previous step
+                                    if self.augm_indx[i] == j :
+                                        counter+=1
+                                        temp_label_full[label.shape[0]+counter-1,:,:] = label[j,:,:]
+                                        #np.insert(label, j, [label[j,:,:]], axis=0)
+                                        break
+                        if self.data_augm == 4:
+                            counter = 0
+                            for j in range(feat.shape[0]):
+                                feat_augm = []
+                                label_seds = []
+                                label_doas = []
+                                if self.tta == 1:
+                                    feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = self.tta)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                elif self.tta == 2:
+                                    feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = self.tta)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                elif self.tta == 3:
+                                    feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = self.tta)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                            feat = temp_feat_full[:feat.shape[0]+counter,:,:,:]
+                        label = temp_label_full[:label.shape[0]+counter,:,:]
                         
                     #17/5/2022 CUSTOM add temp variable to keep the y_Sed->needed for tta
                     y_sed = label[:, :, :self._nb_classes]
@@ -310,7 +331,7 @@ class DataGenerator(object):
 
                     #14/5/2022 CUSTOM for each batch of feat and labels, do tta with ACS (GccRandomSwapMic)
                     #(10, 60, 36)=(B, T, F) label size
-                    #(10, 60, 36)=(B, C, T, F) feat size
+                    #(10, 10, 60, 36)=(B, C, T, F) feat size
                     if self.tta > 0:
                         #np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
                         feat_news = np.zeros((label.shape[0], self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
@@ -319,11 +340,11 @@ class DataGenerator(object):
 
                         for i in range(label.shape[0]):
                             if self.tta == 1:
-                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:] = GccSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:], tta = self.tta)
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:], was_augm = GccSwapChannelMic(always_apply=True, tta = self.tta)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
                             elif self.tta == 2:
-                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:] = GccSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:], tta = self.tta)
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:], was_augm = GccSwapChannelMic(always_apply=True, tta = self.tta)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
                             elif self.tta == 3:
-                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:] = GccSwapChannelMic(always_apply=True)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:], tta = self.tta)
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:], was_augm = GccSwapChannelMic(always_apply=True, tta = self.tta)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
                         
                         feat, label = feat_news, label_doas
 
