@@ -6,7 +6,7 @@
 #from tensorflow import keras
 
 #import tensorflow.keras
-from keras.layers import Lambda,Bidirectional, Conv2D, Conv1D, MaxPooling2D, Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D, Multiply, GlobalAveragePooling2D, ELU ##CUSTONM CODE (to Add kai AveragePooling)
+from keras.layers import Lambda,Bidirectional, Conv2D, Conv1D, MaxPooling2D, GlobalMaxPool1D,Input, Concatenate, Add, AveragePooling2D, Flatten, ZeroPadding2D, Multiply, GlobalAveragePooling2D, ELU,  MaxPool1D, GlobalAvgPool1D
 from keras.layers.core import Dense, Activation, Dropout, Reshape, Permute
 from keras.layers.recurrent import GRU, LSTM
 from keras.layers.normalization import BatchNormalization
@@ -60,6 +60,32 @@ configuration = tf.compat.v1.ConfigProto()
 configuration.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=configuration)
 '''
+# SampleCNN basic cnn block. Ref: https://github.com/tae-jun/sampleaudio/blob/master/lib/model.py
+def squeeze_excitation_samplecnn(x, amplifying_ratio, name):
+  num_features = x.shape[-1].value
+  x = GlobalAvgPool1D(name=f'{name}_squeeze')(x)
+  x = Reshape((1, num_features), name=f'{name}_reshape')(x)
+  x = Dense(num_features * amplifying_ratio, activation='relu',
+            kernel_initializer='glorot_uniform', name=f'{name}_ex0')(x)
+  x = Dense(num_features, activation='sigmoid', kernel_initializer='glorot_uniform', name=f'{name}_ex1')(x)
+  return x
+
+
+def basic_block(x, num_features, name):
+  """Block for basic models."""
+  x = Conv1D(num_features, kernel_size=3, padding='same', use_bias=True,
+             kernel_regularizer=keras.regularizers.l2(0.001), kernel_initializer=keras.initializers.he_uniform(), name=f'{name}_conv')(x)
+  x = BatchNormalization(name=f'{name}_norm')(x)
+  x = Activation('relu', name=f'{name}_relu')(x)
+  x = MaxPool1D(pool_size=3, name=f'{name}_pool')(x)
+  return x
+
+
+def se_block(x, num_features, ratio, name):
+  """Block for SE models."""
+  x = basic_block(x, num_features, name)
+  x = Multiply(name=f'{name}_scale')([x, squeeze_excitation_samplecnn(x, ratio, name)])
+  return x
 ### https://github.com/Machine-Listeners-Valencia/seld-dcase2021/blob/master/keras_model.py
 def squeeze_excite_block(input, ratio=16):
     """ Create a channel-wise squeeze-excite block
@@ -77,12 +103,13 @@ def squeeze_excite_block(input, ratio=16):
     se = GlobalAveragePooling2D()(input)
     se = Reshape(se_shape)(se)
     se = Dense(filters // ratio, activation='relu', kernel_initializer='he_normal', use_bias=False)(se)
+    se = Dropout(0.2)(se)
     se = Dense(filters, activation='sigmoid', kernel_initializer='he_normal', use_bias=False)(se)
 
     if K.image_data_format() == 'channels_first':
         se = Permute((3, 1, 2))(se)
 
-    x = Multiply([input, se])
+    x = Multiply()([input, se])
     return x
 
 
@@ -98,7 +125,7 @@ def spatial_squeeze_excite_block(input_tensor):
     se = Conv2D(1, (1, 1), activation='sigmoid', use_bias=False,
                 kernel_initializer='he_normal')(input_tensor)
 
-    x = Multiply([input_tensor, se])
+    x = Multiply()([input_tensor, se])
     return x
 def channel_spatial_squeeze_excite(input_tensor, ratio=16):
     """ Create a spatial squeeze-excite block
@@ -473,6 +500,15 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
             spec_cnn = Dropout(dropout_rate)(spec_cnn)
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
         print('model 0')
+        # Squeeze and Excitation (Ko)
+        squeeze_ratio = 0.5
+        if squeeze_ratio > 0:
+            se_filters = int(squeeze_ratio * spec_cnn.shape[-1])
+
+            se = tf.reduce_mean(spec_cnn, axis=(-3, -2), keepdims=True)
+            se = Conv2D(se_filters, 1, activation='relu')(se)
+            se = Conv2D(spec_cnn.shape[-1], 1, activation='sigmoid')(se)
+            spec_cnn = se * spec_cnn
 
     ##### RESNET50 IMPLEMENTATION ##########
     if model_approach == 1 or model_approach == 2:
@@ -608,8 +644,8 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         #(60, 128)
         ###### DENSE LAYERS #########
         spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
-        spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
-        spec_cnn = Dense(36, activation = 'tanh')(spec_cnn)
+        #spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
+        #spec_cnn = Dense(36, activation = 'tanh')(spec_cnn)
     elif model_approach == 10:
         #(10,300,64)
         print("approach 6! ",spec_cnn)
@@ -768,7 +804,27 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
     elif model_approach == 8:
         print(spec_cnn)
         spec_cnn = DenseNet(inputs = spec_cnn, growth_rate=nb_cnn2d_filt//2, layers=2, nb_filters=nb_cnn2d_filt)
-        spec_cnn = Dense(128, kernel_regularizer=tf.keras.regularizers.l2(0.001))(spec_cnn)
+        #spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        #(60, 512)
+        #spec_cnn = Reshape((spec_cnn.shape[-3], spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
+        #spec_cnn = Dense(128, kernel_regularizer=tf.keras.regularizers.l2(0.001))(spec_cnn)
+
+        ##### dense-conformer
+        #added maxpool for reshaping output
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        #print(spec_c_cnn)
+        ##need to pool to bring sequence to (60,64,2) dimension(seq-len, mel-bands, idk(??))
+        spec_cnn = AveragePooling2D(pool_size=(1,4), padding='same')(spec_cnn)
+        spec_cnn = Reshape((spec_cnn.shape[1], spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
+        #12/5/2022
+        print(spec_cnn)
+        spec_cnn = Dropout(0.2)(spec_cnn)
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
+        for i in range(depth):
+            spec_cnn = ConformerBlock(dim = spec_cnn.shape[-1], inputs= spec_cnn)
+        print("output conformer ", spec_cnn.shape)
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
+        spec_cnn = Dense(128, activation = 'relu')(spec_cnn)
     #Najaro-Alcajar squeeze excitation
     elif model_approach == 9:
         spec_aux = spec_cnn
@@ -784,7 +840,7 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = Add()([spec_cnn, spec_aux])
         spec_cnn = ELU()(spec_cnn)
 
-        spec_cnn = channel_spatial_squeeze_excite(spec_cnn, ratio=ratio)
+        spec_cnn = channel_spatial_squeeze_excite(spec_cnn, ratio=1)
 
         spec_cnn = Add()([spec_cnn, spec_aux])
 
@@ -792,6 +848,61 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         spec_cnn = Dropout(dropout_rate)(spec_cnn)
 
         spec_cnn = Permute((2, 1, 3))(spec_cnn)
+    #Sample CNN-> more layers, smaller filter size (and SE block)
+    elif model_approach == 11:
+        spec_cnn = Conv1D(nb_cnn2d_filt*2, kernel_size=3, strides=3, padding='same', use_bias=True,
+             kernel_regularizer=keras.regularizers.l2(0.001), kernel_initializer=keras.initializers.he_uniform(scale=1.), name='conv0')(spec_cnn)
+        spec_cnn = BatchNormalization(name='norm0')(spec_cnn)
+        spec_cnn = Activation('relu', name='relu0')(spec_cnn)
+
+        # Stack convolutional blocks.
+        layer_outputs = []
+        for i in range(9):
+            num_features *= 2 if (i == 2 or i == (9 - 1)) else 1
+            spec_cnn = basic_block(spec_cnn, num_features, f'block{i}')
+            layer_outputs.append(spec_cnn)
+        spec_cnn = GlobalMaxPool1D(name='final_pool')(spec_cnn)
+        # The final two FCs.
+        spec_cnn = Dense(spec_cnn.shape[-1].value, kernel_initializer='glorot_uniform', name='final_fc')(spec_cnn)
+        spec_cnn = BatchNormalization(name='final_norm')(spec_cnn)
+        spec_cnn = Activation('relu', name='final_relu')(spec_cnn)
+        spec_cnn = Dropout(0.2)(spec_cnn)
+        #spec_cnn = Dense(cfg.num_classes, kernel_initializer='glorot_uniform', name='logit')(spec_cnn)
+        #spec_cnn = Activation(cfg.activation, name='pred')(spec_cnn)
+    elif model_approach == 12:
+        conv_size = [nb_cnn2d_filt, nb_cnn2d_filt*2, nb_cnn2d_filt*4]
+        for i in range(3):
+            spec_aux = spec_cnn
+            spec_cnn = Conv2D(conv_size[i], 3, padding='same')(spec_cnn)
+            spec_cnn = BatchNormalization()(spec_cnn)
+            spec_cnn = ELU()(spec_cnn)
+            spec_cnn = Conv2D(conv_size[i], 3, padding='same')(spec_cnn)
+            spec_cnn = BatchNormalization()(spec_cnn)
+
+            spec_aux = Conv2D(conv_size[i], 1, padding='same')(spec_aux)
+            spec_aux = BatchNormalization()(spec_aux)
+
+            spec_cnn = Add()([spec_cnn, spec_aux])
+            spec_cnn = ELU()(spec_cnn)
+
+            spec_cnn = channel_spatial_squeeze_excite(spec_cnn, ratio=1)
+
+            spec_cnn = Add()([spec_cnn, spec_aux])
+
+            spec_cnn = MaxPooling2D(pool_size=(t_pool_size[i], f_pool_size[i]))(spec_cnn)
+            spec_cnn = Dropout(dropout_rate)(spec_cnn)
+
+        ###
+        spec_cnn = Permute((2, 1, 3))(spec_cnn)
+        spec_cnn = Reshape((spec_cnn.shape[1], spec_cnn.shape[-1]*spec_cnn.shape[-2]))(spec_cnn)
+        spec_cnn = Dropout(0.5)(spec_cnn)
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
+        ###
+        for i in range(depth):
+            spec_cnn = ConformerBlock(dim = spec_cnn.shape[-1], inputs= spec_cnn)
+        print("output conformer ", spec_cnn.shape)
+        ###### DENSE LAYERS #########
+        spec_cnn = Dense(256, activation = 'relu')(spec_cnn)
     """
         #####
         #spec_cnn = ZeroPadding2D(padding=(6, 6))(spec_cnn)
@@ -916,11 +1027,10 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         doa = Activation('tanh', name='doa_out')(doa)
         print(spec_cnn)
     #model = None
-    # CUSTOM added BinaryCrossentropy loss as seen in Xytos diplwmatikh,
     if is_accdoa:
         model = Model(inputs=spec_start, outputs=doa)
         
-        model.compile(optimizer=Adam(learning_rate=0.0001),
+        model.compile(optimizer=Adam(learning_rate=0.00003),
             loss='mse',
             metrics=['accuracy'])
     else:

@@ -254,8 +254,8 @@ class DataGenerator(object):
                     ##CUSTOM add a data augmented feature in the array
                     #for each batch segment(64 segments) add that to specaugm
                     if self.data_augm > 0 and self.train:
-                        temp_feat_full = np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
-                        temp_label_full = np.zeros((2*feat.shape[0], self._label_seq_len, self._label_len))
+                        temp_feat_full = np.zeros((4*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
+                        temp_label_full = np.zeros((4*feat.shape[0], self._label_seq_len, self._label_len))
                         #reset index array 
                         self.augm_indx = np.array([0], dtype=np.int8)
                         counter = 0
@@ -301,12 +301,28 @@ class DataGenerator(object):
                                 feat_augm = []
                                 label_seds = []
                                 label_doas = []
-                                if self.tta == 1:
-                                    feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = self.tta)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
-                                elif self.tta == 2:
-                                    feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = self.tta)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
-                                elif self.tta == 3:
-                                    feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = self.tta)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                #if self.tta == 1:
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 1)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                                #elif self.tta == 2:
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 2)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                                #elif self.tta == 3:
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 3)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 4)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
                                 
                                 if was_augm is True:
                                     counter +=1
