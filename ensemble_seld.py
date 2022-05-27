@@ -13,6 +13,7 @@ import cls_data_generator
 from cls_compute_seld_results import ComputeSELDResults, reshape_3Dto2D
 import keras_model
 import parameter
+import parameter2 # for 128 mel
 import time
 import tensorflow as tf
 import pandas as pd
@@ -20,6 +21,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import keras
 from keras.models import load_model, Model
+import swa
 
 global history 
 
@@ -202,6 +204,7 @@ def main(argv):
     # use parameter set defined by user
     task_id = '1' if len(argv) < 2 else argv[1]
     params = parameter.get_params(task_id)
+    params2 = parameter2.get_params(task_id)
 
     job_id = 1 if len(argv) < 3 else argv[-1]
 
@@ -269,10 +272,10 @@ def main(argv):
             params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
         )
         #Load the wanted models
-        model1 = get_model(params, data_in, data_out, 0, 0)
-        model1.load_weights(params['model_dir']+'2_vanilla_da1_2_mic_dev_split6_model.h5')
+        model1 = get_model(params, data_in, data_out, 13, 0)
+        #model1.load_weights(params['model_dir']+'2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
         
-        model2 = get_model(params, data_in, data_out, 7, 0)
+        model2 = get_model(params, data_in, data_out, 12, 0)
         '''
         keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
                                       nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
@@ -285,32 +288,45 @@ def main(argv):
                                       nb_conf = params['nb_conf'],
                                       simple_parallel=params['simple_parallel'])
 '''
-        model2._name = 'imuseless'
+        #model2._name = 'imuseless'
         print('model2 done')
         #model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
-        model2.load_weights(params['model_dir']+'2_resnet2020_conformer_tta2_acs_mic_dev_split6_model.h5')
+        model1.load_weights('models/2_densenet_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
+        print('model1 done')
+        #model2.load_weights(params['model_dir']+'2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
+        #squeeze-conformer
+        model2.load_weights(params['model_dir']+'2_conformer_da1_2_3_tta4_no2dense_mic_dev_split6_model.h5')
         print('weights2 done')
-        #model2 = keras_model.load_model(filepath='models/2_resnet32_bs4_pseudoresnet_gpu_mic_dev_split6_model.h5')
-        model2.summary()
-        print('model2 done', unique_name)
         
-        model3 = get_model(params, data_in, data_out, 10, 0)
+        #model3 = get_model(params, data_in, data_out, 10, 0)
                                     
         #model3._name = 'illkillmyself'
         
         print('model3 done')
-        model3.load_weights(params['model_dir']+'2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
+        #model3.load_weights(params['model_dir']+'2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
         print('weights3 done')
-        model3.summary()
+        #model3.summary()
         print('model3 done', unique_name)
         #model3.save(params['model_dir']+'2_ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
         model4 = get_model(params, data_in, data_out, 6, 0)
         print('model3 done')
-        #model4.load_weights(params['model_dir']+'2_ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
+        model4.load_weights(params['model_dir']+'2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
+        print('weights4 done')
+        model3 = get_model(params, data_in, data_out, 2, 0)
+        #model3.load_weights(params['model_dir']+'2_resnet34_tta2_acs_da1_2_mic_dev_split6_model.h5')
+        model3.load_weights(params['model_dir']+'2_new_resnet34_tta2_da2_lenovo_mic_dev_split6_model.h5')
         print('weights3 done')
-        model4.summary()
+
+        model5 = get_model(params, data_in, data_out, 10, 0)
+        model5.load_weights(params['model_dir']+ '2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
+        
+        model6 = get_model(params, data_in, data_out, 8, 0)
+        print('wtf')
+        model6.load_weights(params['model_dir']+'2_densenet_conforemr_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
+        print('wtf')
+        #model4.summary()
         ##ensembling
-        models = [model1, model2, model3]
+        models = [model6, model2, model3, model4]
 
         from keras.layers import Input, Average
         from keras.models import Model
@@ -320,6 +336,13 @@ def main(argv):
         ensemble_output = Average()(model_outputs)
         ensemble_model = Model(inputs=model_input, outputs=ensemble_output)
 
+
+        #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
+        pred_test = ensemble_model.predict_generator(
+            generator=data_gen_test.generate(),
+            steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+            verbose=2
+        )
         #Kos aggregation
         if params['aggregation'] == True:
             outs = []
@@ -338,12 +361,18 @@ def main(argv):
             print(outputs)
         #####
         
-        #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
-        pred_test = ensemble_model.predict_generator(
-            generator=data_gen_test.generate(),
-            steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
-            verbose=2
-        )
+        # stochastic weight averaging
+            '''swa_start_epoch = 10
+            swa_freq = 2
+            swa_obj = swa.SWA(model1, swa_start_epoch, swa_freq)
+            swa_obj2 = swa.SWA(model2, swa_start_epoch, swa_freq)
+            swa_obj3 = swa.SWA(model3, swa_start_epoch, swa_freq)
+            swa_obj4 = swa.SWA(model4, swa_start_epoch, swa_freq)
+            ##maybe train again??? idk
+            swa_obj.on_train_end()
+            swa_obj2.on_train_end()
+            swa_obj3.on_train_end()
+            swa_obj4.on_train_end()'''
         # TTA
         if params['tta'] is True:
             print('tta')
@@ -354,7 +383,7 @@ def main(argv):
             data_gen_test_tta2 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 2, is_eval=True if params['mode'] is 'eval' else False
             )
-            data_gen_test_tta3 = cls_data_generator.DataGenerator(
+            '''data_gen_test_tta3 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 3, is_eval=True if params['mode'] is 'eval' else False
             )
             data_gen_test_tta4 = cls_data_generator.DataGenerator(
@@ -368,7 +397,7 @@ def main(argv):
             )
             data_gen_test_tta7 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 7, is_eval=True if params['mode'] is 'eval' else False
-            )
+            )'''
             pred_test_tta1 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta1.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
@@ -379,7 +408,7 @@ def main(argv):
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             )
-            pred_test_tta3 = ensemble_model.predict_generator(
+            '''pred_test_tta3 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta3.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
@@ -403,7 +432,7 @@ def main(argv):
                 generator=data_gen_test_tta7.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
-            ) 
+            ) '''
             
             print('pred tta', pred_test.shape)
             print('pred tta', pred_test_tta1.shape)
