@@ -302,3 +302,354 @@ WILL RUN:
 	-Turbox ensemble of Resnet34+Conformer(with Zhangs cnn, the one that i run) and tta with ensemble_seld,py from Lenovo , will later try Kos post-processing overlapping aggregation
 
 i changed swa to class form (in turbox), couldnt save weights in the train_end->changed nothing, now just commented it
+
+
+16attn actually uses 24 attention blocks not 16
+also all attn16 models have da3
+
+changed layernorm axis from -1 to 1 in attention.py in turbox
+
+RUNNING:-Turbox zhang conformer 24 attentions and sedxyz da1+2 tta->need to start ensembling, cause my models could not load
+	  -Lenovo resnet2020_conformer da2
+
+FOR TTA: might need to rotate back the predictions before ensembling them
+
+turbox gives nan loss (not tta or parallel fault)->adam 0.00001 loss to counter it->axis=1 still
+so now running:turbox zhang conformer 24 attentions wreg and sedxyz da1+2 tta adam 0.00001 axis=1 batch=64(instead of 16 which was for each turbox model ever run)
+
+adam 0.00005 gave constant loss, running adam 0.00001->constant after a while....
+running adam -> constant
+adabelief 0_00005 also constant
+
+turned axis=-1 again in conformer_tf and tta->conformer_zhang_wreg_attn24_da12_tta_adam0_0001
+changed zhangs cnn part to take filters 64, 128 and 256->it took 64, 128 and 192->made it like lenovos
+changed axis to 1 again and tta->conformer_zhang_wreg_attn24_da12_tta_adam0_0001_axis1
+noticed data in has 5 channels????->looking into that maybe thats why i got all constant loss with or without sedxyz or tta
+
+batch feature extraction for da1+2 and 64 mels instead of 128
+i think i messed up with the mels in the params and the mels i had the extracted data thats why it concluded channels was 5 instead of 10
+
+RUNNING:Turbox:conformer_zhang_wreg_attn24_da12_tta_adam0_0001_axis_1->zhang conformer sedxyz with 64 mels, tta, da1_2 axis=1 adam 0_00001
+	  Lenovo:resnet2020_conformer da2, no tta or aggregation
+turbox still getting similar results wtf->could be weight regularizers
+
+made lr scheduler to half the lr after epoch 15
+
+difference in lenovos zhang conformer i run and turbox's: turbox is sedxyz and da1+2 and will use tta
+
+TOMMOROW: HAVE TO START ENSEMBLES
+
+17/5/2022
+2_conformer_zhang_wreg_attn24_da12_tta_adam0_0001_axis_1 stopped due to OOEM while i was sleeping
+->continuing it for 5 more epochs from where it stopped
+
+LENOVOV RUN resnet2020_conformer_gru_da2 for 25 epochs->better results on epoch 25 than resnet34_conformer(that run on turbox)->will run 10 more epochs
+->RUN gave same score as baselines
+
+TO DO:
+Dynamic thresholds(look kos git for values [0.35, 0.35, 0.3, 0.4, 0.65, 0.6, 0.45, 0.55, 0.3, 0.3, 0.45, 0.3]  (in make_answers.py))(https://ir.lib.uth.gr/xmlui/bitstream/handle/11615/50539/19379.pdf?sequence=1&isAllowed=y)
+acs da training
+tta
+dense_conformer
+squeeze cnn (Najar-Alcazar report)
+track-wise (EINV2) output format combats overlap of same event class(see https://arxiv.org/pdf/2203.10228.pdf and Nguyen)
+
+'SELDnet has the limitation that it is unable to detect sound
+events of the same type but with different locations [1]. Event
+independent network (EIN) with track-wise output format was
+proposed to tackle this problem [4, 10]. In EIN, there are
+several event-independent tracks, which means the prediction
+on each track can be of any event type. The number of tracks
+needs to be pre-determined according to the maximum number
+of overlapping events'
+
+'To increase the diversity of model ensembles,
+we replace convolution blocks with dense blocks
+'
+
+'Methods like TTA,
+average or weighted ensemble [8, 14] cannot align predictions
+from different tracks, which makes these methods inapplicable to the track-wise output format. We propose a novel
+post-processing method named track-wise ensemble model.
+'
+
+' In dense
+blocks, each layer is connected with all preceding layers to obtain additional inputs, and delivers its own feature maps to all
+subsequent layers. This feed-forward structure can strengthen
+forward propagation of features and back propagation of gradients'(https://arxiv.org/pdf/2203.10228.pdf)
+
+cant load the conformer model for ensemble for some reason->gives axes dont match array error
+running new conformer similar to the best one 'conformer_da1_2_adam0_0001_wreg_scheduler_depth_gru_144attn'
+
+cannt load pseudoresnet either, even if i did thius in the past on lenovo-> look into that
+running vanilla da1_2 to use for moc ensemble
+ensembling technique works but gives worse results (tried to load vanilla 2 times):
+Class-aware localization scores: Localization Error: 68.4, Localization Recall: 10.5
+        Location-aware detection scores: Error rate: 0.95, F-score: 2.5
+        SELD (early stopping metric): 0.80
+
+tta->might need to change the per_file param to False like data_gen_train\
+
+RUNNING:Turbox vanilla no da because i got bad results with da1_2->after that ensemble
+	  Lenovo tta da2 dense_conformer dynamic thresholds-> per__file on data_gen_test changed to False->changed it back to true
+
+cls_data_generator deleted the code for the 3 ensemble cnns (check github before todays date to get the ensemble version)
+tta cant do TfmapRandomSwapMic because it gives a 7 channel feqat and label output, but i need a 10 channel one
+->ill do the GccRandomSwapMic but with all 8 rotations and not random->will have 8 data_gen_tests for each rotation
+
+RUNNING:Turbox vanilla no da because i got bad results with da1_2->after that ensemble
+	  Lenovo tta da2 dense_conformer dynamic thresholds SWA (previous swa in lenovo was i believe not correct, like it wasnt implemented)
+
+18/5/2022
+saving code (seld.py, keras_models.py and parameters.py) in seagate hard drive in models folder from now on
+
+keras_models.py was at fault for giving axes dont match error
+i replaced with the lenovos keras_models.py to load resnet2020_conformer (see git from todays date to get turbox latest)
+and it loaded the weights
+also axis=-1 in conformer_tf
+will run resnet2020_conformer + CNN ensemble-> it WORKED!!!!!  gave 0.56 score
+run it second time and gave 0.7 score with no change.....->i put quick_test:True in params and it gave bad results
+Need to run all with quick test False
+
+
+if i give test split fold 5 instead of 6, it gives better results....
+
+run sarath baseline and got the expected results->so sth wrong with my code... will relace my seld.py
+
+also cannot load_model->gives GRU error
+
+Run resnet2020_conformer da0 on the sarath baseline->gave 0.0379 for 4 epochs->changed lr to 0.0001, got similar results like lenovo
+
+resnet2020_conformer da0 gave 2.0 point less than with da1_2 on epoch 10
+
+sedxyz worse than non parallel->lenovo baseline no parallel gave 0.78 score on first epoch while parallel gave 1.0
+
+changed res_conv18 and res_identity18 in lenovo to match main githubs resnet18 da2 ( git timestamp a4a64c5e3e)->still cant load pseudoresnet->gives axes error
+
+cant load pseudoresnet sadly, will run it again
+
+RUNNING:: Lenovo ResNet18 da2, no tta
+
+Changed seled.py in turbox with lenovos latest version with dyn thresholds
+did all 8 rotations in data_augmentations for gcc
+
+i think resnet2020_conformer got corrupted or sth cause it gives really bad results... will run it again
+
+resnet2020_conformer no tta: 
+resnet 2020_conformer tta (2/8 transformations)
+
+RUNNING:: Lenovo ResNet18 da2, no tta and deleted the Dense(12, softmax) after the resnet18, because i believe it worsened the performance (resnet18_da2)->might run this with resnet34 as well (it had Dense(12, softmax) too)
+          Turbox resnet2020_conformer da1_2 tta 8/8 transforms to get the trained weights back (resnet2020_conformer_tta2_acs2)
+
+TO RUN::: Baseline
+	    Dense_conformer
+	    Squeeze_conformer
+	    Resnet_conformer + Dense_Conformer + Squeeze_conformer
+	    3 diff conformer models + Resnet2020
+	    da1_2_3->ACS
+
+resnet2020_conformer_da1_2_6epochs_tta8 and dynamic thresh->worse with tta 8/8???-> im idiot, didnt add the rotation back for all tta
+same with 2/8 tta:
+Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 30.2, Localization Recall: 30.8
+        Location-aware detection scores: Error rate: 0.78, F-score: 20.9
+        SELD (early stopping metric): 0.61
+
+	second run:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 30.7, Localization Recall: 31.3
+        Location-aware detection scores: Error rate: 0.78, F-score: 20.8
+        SELD (early stopping metric): 0.61
+
+
+Same with 0/8 (no tta):Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 37.9, Localization Recall: 36.4
+        Location-aware detection scores: Error rate: 0.78, F-score: 18.5
+        SELD (early stopping metric): 0.61
+
+	second run with no tta:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 39.4, Localization Recall: 36.1
+        Location-aware detection scores: Error rate: 0.79, F-score: 17.5
+        SELD (early stopping metric): 0.62
+
+TTA gives better LE but worse LR! also slightly better F-score
+
+moved latest version of turbox (with acs and denseconv) to seagate
+
+19/5/2022
+resnet2020_conformer_tta2_acs2 done  (also has dynthreshold)
+acs and tta0:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 37.7, Localization Recall: 44.8
+        Location-aware detection scores: Error rate: 0.78, F-score: 21.3
+        SELD (early stopping metric): 0.58
+
+acs and tta2:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 31.6, Localization Recall: 41.6
+        Location-aware detection scores: Error rate: 0.73, F-score: 25.8
+        SELD (early stopping metric): 0.56
+
+Since the model has also been trained with acs, it is now generally better with tta!
+
+acs tta8:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 23.4, Localization Recall: 17.9
+        Location-aware detection scores: Error rate: 0.84, F-score: 17.6
+        SELD (early stopping metric): 0.65
+2022-05-19 15:51:17.882068: W tensorflow/python/util/util.cc:348] Sets are not currently considered sequences, but this may change in the future, so consider avoiding using them.
+
+because it wasnt trained
+
+RUNNING: Lenovo resnet18 again (resnet18_da2)->running for 35 epochs total
+	   Turbox Resnet 34 tta acs da1_2_3 dyn threshold (resnet34_tta2_acs_da1_22)->run for 12 epochs
+		NOW in turbox i run resnet34-conformer tta acs da1_2_3 dyn threshold(2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model)
+
+https://github.com/IRIS-AUDIO/SELD/blob/8be19266479f32659e2c1d9be7dd6a377fe7abed/modules.py#L452->has densenet, xception...
+
+
+20/5/2022
+
+RUn 2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model for 20 epochs
+    2_renet34_tta2_da1_2_acs for 12 epochs
+    2_resnet18_da2 for 35 epochs
+
+CNN+res2020_conformer+new_res34_conformer ensemble:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 27.8, Localization Recall: 38.0
+        Location-aware detection scores: Error rate: 0.74, F-score: 26.2
+        SELD (early stopping metric): 0.56
+with tta2:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 24.4, Localization Recall: 35.1
+        Location-aware detection scores: Error rate: 0.73, F-score: 28.6
+        SELD (early stopping metric): 0.56
+
+batch_extraction for 128 mel to load some conformer models
+->try also diff window size->FIRS run ensembles
+
+ensembling:cnn+res2020_conf+new_res34_conf+2_ready_conformer_depth_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256
+with tta2:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 23.6, Localization Recall: 29.9
+        Location-aware detection scores: Error rate: 0.76, F-score: 25.7
+        SELD (early stopping metric): 0.58
+without:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 26.9, Localization Recall: 33.6
+        Location-aware detection scores: Error rate: 0.76, F-score: 24.6
+        SELD (early stopping metric): 0.58
+
+
+baseline da2 sedxyz worse than baseline da2
+conformer_swa_da1_2_3_tta2_dyn run
+
+
+
+22/5/2022
+
+'They found out that CNNs using waveform input can be competitive with CNNs using mel-spectrogram input when the network
+layer is sufficiently deep'
+'. However, they did not focused on the effect
+of the small size filters or used only two or three convolution layers which is not sufficient to learn the complex acoustic
+structures'
+
+'the excitation is
+associated with the loudness of audio and the activations of feature maps. This confirms that the excitation is associated with
+discriminating different categories of audio'
+
+'Mel-spectrogram is a widely used input representation for
+audio classification. As shown in Fig. 1, they are obtained via
+multiple computational steps including Short-Time Fourier
+Transform (STFT), absolute value operation, linear-to-mel
+mapping and magnitude compression.'
+-Comparison and Analysis of SampleCNN
+Architectures for Audio Classification
+
+SampleCNN-> small filters and more layers (9 layers and 2 or 3 sized filters)
+
+dense da1_2_3 tta2 run->0.55 score
+
+RUNNING: Continuing resnet34
+	   Dense conformer
+
+23/5/2022
+
+Dense conformer finished!!
+running new_resnet34_conforer_da1_2_3_tta2_dyn
+Also finishing resnet34->actually didnt use acs in lenovo-> i forgot to put tta=1 in data_gen_train and results are for tta false cause i got error
+->running last 10 epochs with tta and acs
+cant run acs due to memory leak in lenovo
+
+exw kanei malakia me to swa thelei pollapla modela-> to vazw sto ensemble_seld.py
+continuing the resnet2020_conformer_da1_2_3_tta2 model to 40 epochs (was 25)-> didnt ggive better results than at 25 epochs
+try ensembles
+try no gru again with new resnet-conformer->with new conformer gives constant loss
+try conformer without the 3 dense layers
+
+RUNNING::Lenovo resnet34_da2 acs andtta2 on last 10 epochs
+	   Turbox alcajar squeeze conformer da1_2_3 tta4!! without the 2 dense layers
+
+24/5/2022
+
+Renset34_da1_2_3_tta2_da2_lenovo run->got 0.50 score!!
+Conformer without dense and squeeze gives 0.51 in 10 epochs!!!!!!!
+
+RUNNING::Lenovo squeeze alcazar cnn->OOM->running conformer_da2_no2dense now on 30th epoch->DONE gave no better results than squeeze_conformer-nodense
+	   Turbox alcajar squeeze conformer da1_2_3 tta4!! without the 2 dense layers (NO GRU->constant)->DONE
+
+
+25/5/2022
+not much
+9 epochs on base_128
+
+26/5/2022
+
+densenet+squeezeconformer:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 24.5, Localization Recall: 48.5
+        Location-aware detection scores: Error rate: 0.65, F-score: 38.4
+        SELD (early stopping metric): 0.48
+
+BETTER LE
+
+densenet+squeezeconformer+resnet34_da1_2_3_tta2(resnet 0.55 score before lenovo, 12 epochs version):
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 23.2, Localization Recall: 44.2
+        Location-aware detection scores: Error rate: 0.67, F-score: 36.8
+        SELD (early stopping metric): 0.50
+
+
+Ensemble 1 (2 ResConformers, 2 Conformers):
+	Resnet34Conformer + ResNetlesslayersConformer + Conformer128mel + SqueezeConformer:
+		
+Ensemble 2 (1 CNN, 2 Conformers, 1 ResNet) (DenseNet, SqueezeConformer+ '2_ready_conformer_depth_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model, resnet34 12 epochs):
+	Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 22.4, Localization Recall: 38.7
+        Location-aware detection scores: Error rate: 0.70, F-score: 33.6
+        SELD (early stopping metric): 0.53
+
+Ensemble 3 (1 Resnet-conformer, 2 Conformers, 1 resnet) (2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn , (squeeze) 2_conformer_da1_2_3_tta4_no2dense+2_conformer_swa_da1_2_3_tta2_dyn, 2_resnet34_tta2_acs_da1_2):
+	Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 23.4, Localization Recall: 42.7
+        Location-aware detection scores: Error rate: 0.68, F-score: 35.9
+        SELD (early stopping metric): 0.51
+
+
+LOADED model2 that was the conformer da1_2_3 with densenet-conformer model layers...
+Ensemble 4 (1 CNN, 1 Resnet-conformer, 2 Conformers, 1 resnet) (DenseNet, same asa above):Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 22.7, Localization Recall: 42.1
+        Location-aware detection scores: Error rate: 0.68, F-score: 35.9
+        SELD (early stopping metric): 0.51
+	(SIMILAR TO ABOVE, better LE)
+
+Ensemble 5 (1 Resnet-conformer, 3 Conformers, 1 resnet)(same as above + densenet_conformer):
+
+
+
