@@ -668,7 +668,33 @@ Ensemble 6 (1 resnet + 3 conformers):
         Class-aware localization scores: Localization Error: 23.7, Localization Recall: 44.1
         Location-aware detection scores: Error rate: 0.68, F-score: 36.6
         SELD (early stopping metric): 0.50
-
+Ensemble ? (SqueezeConformer + Resnet34):Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 24.4, Localization Recall: 43.9
+        Location-aware detection scores: Error rate: 0.68, F-score: 36.3
+        SELD (early stopping metric): 0.50
+Ensemble ?? (same as above with DesneNet cnn):Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 24.9, Localization Recall: 48.7
+        Location-aware detection scores: Error rate: 0.65, F-score: 39.3
+        SELD (early stopping metric): 0.48
 Ensemble 7 (best of all models):
+	Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 23.1, Localization Recall: 45.8
+        Location-aware detection scores: Error rate: 0.66, F-score: 38.5
+        SELD (early stopping metric): 0.49
+Ενσεμβλε 8: 2 ΡεσνετΨονφορμερ + 2 Conformers:Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 24.4, Localization Recall: 44.3
+        Location-aware detection scores: Error rate: 0.68, F-score: 35.7
+        SELD (early stopping metric): 0.50
 
+Ensemble 9: 3 conformer, 1 cnn:
+Results on test split:
+        DCASE2021 Scores
+        Class-aware localization scores: Localization Error: 23.1, Localization Recall: 43.9
+        Location-aware detection scores: Error rate: 0.67, F-score: 37.4
+        SELD (early stopping metric): 0.50
 
+Ensemble 11 : Ensemble ?? +  densenet+squeezeconformer
