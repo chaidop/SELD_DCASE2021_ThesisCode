@@ -1,0 +1,15 @@
+4: female scream->black
+0: alarm->blue
+1: crying baby->red
+3: barking dog->yellow
+6: footsteps->magenta
+8: male scream->red
+9: male speech->green
+7: knocking on door->blue
+10: ringing phone->black
+      
+      
+      looking in the metadata file for the fold6_room1_mix001.csv file, we see at frame 141 the overlap of the same event class
+      (crying baby)
+      
+      the overlap can be seen on the ploted figure Azimuth reference in the begining
