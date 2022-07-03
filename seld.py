@@ -273,7 +273,7 @@ def main(argv):
             #checkpoint_dir = os.path.dirname(checkpoint_path)
             #latest = tf.train.latest_checkpoint(checkpoint_dir)
             #model.load_weights(checkpoint_path)
-            print("heeeeeeeeeeee")
+
             from keras.models import load_model
             checkpoint_dir = os.path.dirname(checkpoint_path)
             latest = tf.train.latest_checkpoint(checkpoint_dir)
@@ -286,14 +286,15 @@ def main(argv):
         #model.load_weights('models/2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
         #model.load_weights('models/2_densenet_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
         #model.load_weights('models/2_densenet_conforemr_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
-        model.load_weights('models/2_conformer_da1_2_3_tta4_no2dense_mic_dev_split6_model.h5')
+        #model.load_weights('models/2_conformer_da1_2_3_tta4_no2dense_mic_dev_split6_model.h5')
+
         # start training
         for epoch_cnt in range(nb_epoch):
             start = time.time()
             ##CUSTOM 
             checkpoint_path = "training_checkpoints/model_3/cp-0005.ckpt"
             checkpoint_dir = os.path.dirname(checkpoint_path)
-            print("heyyy ",checkpoint_path)
+
             # Create a callback that saves the model's weights
             #save weights once per 3 epochs (model actually trains 5 epochs for 50 nb_epochs)
             #cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -370,7 +371,7 @@ def main(argv):
             #17/5/2022
             model_freezed = freeze_layers(model)
             model_freezed.save(model_name + 'model')
-            print('model saved i hope or imma kms')
+
         print('\nResults on validation split:')
         print('\tUnique_name: {} '.format(unique_name))
         print('\tSaved model for the best_epoch: {}'.format(best_epoch))
