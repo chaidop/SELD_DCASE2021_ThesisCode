@@ -281,7 +281,6 @@ def res_conv18(x, s, filters):
 def resnet_2020(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
     # 1st stage
     # here we perform maxpooling, see the figure above
-    print("hello\n")
     print(spec_cnn)
     # frm here on only conv block and identity block, no pooling
     print("\n############ STAGE 1 ##############\n")
@@ -326,7 +325,6 @@ def resnet_2020(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
 def resnet34(t_pool_size,f_pool_size, spec_cnn, nb_cnn2d_filt):
     # 1st stage
     # here we perform maxpooling, see the figure above
-    print("hello\n")
     print(spec_cnn)
     # frm here on only conv block and identity block, no pooling
     print("\n############ STAGE 1 ##############\n")
@@ -526,7 +524,6 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
         print(x)
         spec_cnn = x
-        print("hello\n")
         if model_approach == 1:
             spec_cnn = resnet18(spec_cnn)
         elif model_approach == 2:
@@ -689,7 +686,6 @@ def get_model(data_in, data_out, dropout_rate, nb_cnn2d_filt, f_pool_size, t_poo
         x = MaxPooling2D(pool_size=(t_pool_size[0], f_pool_size[0]))(x)
         print(x)
         spec_cnn = x
-        print("hello\n")
         spec_cnn = resnet34(t_pool_size,f_pool_size,spec_cnn, nb_cnn2d_filt)
         #added maxpool for reshaping output
         spec_cnn = Permute((2, 1, 3))(spec_cnn)

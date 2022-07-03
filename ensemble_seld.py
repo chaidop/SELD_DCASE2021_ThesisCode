@@ -288,7 +288,7 @@ def main(argv):
                                       nb_conf = params['nb_conf'],
                                       simple_parallel=params['simple_parallel'])
 '''
-        #model2._name = 'imuseless'
+
         print('model2 done')
         #model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
         model1.load_weights('models/2_densenet_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
@@ -320,14 +320,14 @@ def main(argv):
         model5.load_weights(params['model_dir']+ '2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
         
         model6 = get_model(params, data_in, data_out, 8, 0)
-        print('wtf')
+
         model6.load_weights(params['model_dir']+'2_densenet_conforemr_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
-        print('wtf')
+
         
         model8 = get_model(params, data_in, data_out, 7, 0)
-        print('wtf')
+
         model8.load_weights(params['model_dir']+'2_resnet2020_conformer_tta2_acs_mic_dev_split6_model.h5')
-        print('wtf')
+
         ##ensembling
         models = [model1, model8, model5]
 
@@ -371,7 +371,7 @@ def main(argv):
             swa_obj2 = swa.SWA(model2, swa_start_epoch, swa_freq)
             swa_obj3 = swa.SWA(model3, swa_start_epoch, swa_freq)
             swa_obj4 = swa.SWA(model4, swa_start_epoch, swa_freq)
-            ##maybe train again??? idk
+
             swa_obj.on_train_end()
             swa_obj2.on_train_end()
             swa_obj3.on_train_end()
