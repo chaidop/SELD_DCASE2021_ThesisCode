@@ -9,11 +9,12 @@ from IPython import embed
 from collections import deque
 import random
 from data_augmentation import *
+from utils import *
 
 
 class DataGenerator(object):
     def __init__(
-            self, params, split=1, shuffle=True, per_file=False, is_eval=False, train=False
+            self, params, split=1, shuffle=True, per_file=False, is_eval=False, train=False, tta = 0
     ):
         self._per_file = per_file
         self._is_eval = is_eval
@@ -50,6 +51,8 @@ class DataGenerator(object):
         #check if data is for training, if true then data augmentation can be used
         #else if it is for predict do not augment
         self.train = train
+        self.model_approach = params['model_approach']
+        self.tta = tta
 
         if self._per_file:
             self._nb_total_batches = len(self._filenames_list)
@@ -230,21 +233,29 @@ class DataGenerator(object):
                     for j in range(self._label_batch_seq_len):
                         label[j, :] = self._circ_buf_label.popleft()
 
-                    #(19200, 10, 64) (BATCH_SEQ_LEN, CHAN, MEL_BINS)
+                    #(19200, 10, 64) (BATCH+SEQ_LEN, CHAN, MEL_BINS)
                     feat = np.reshape(feat, (self._feature_batch_seq_len, self._nb_ch, self._nb_mel_bins)).transpose((0, 2, 1))
 
                     # Split to sequences
                     #(64, 300, 64, 10) (batches, SEQ_LEN, MEL_BINS, CHAN)
                     feat = self._split_in_seqs(feat, self._feature_seq_len)
                     feat = np.transpose(feat, (0, 3, 1, 2))
-                    ##CUSTOM extra arameter to augment the list if 
-                    # a data augmented feature is added
+                    
+                    ##CUSTOM if ensemble method of 3 freq is used 
+                    #then generate 3 feat instead of  and 3 respective labels
+                    if self.model_approach == 4:
+                        feat1 = EnsembleFreqMasking(min = 0, max = 32)(feat)
+                        feat2 = EnsembleFreqMasking(min = 16, max = 48)(feat)
+                        feat3 = EnsembleFreqMasking(min = 32, max = 64)(feat)
 
-                    temp_feat_full = np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
-                    temp_label_full = np.zeros((2*feat.shape[0], self._label_seq_len, self._label_len))
+                        feat = np.concatenate(feat1, feat2, feat3)
+
+                    
                     ##CUSTOM add a data augmented feature in the array
                     #for each batch segment(64 segments) add that to specaugm
-                    if self.data_augm is not 0 and self.train:
+                    if self.data_augm > 0 and self.train:
+                        temp_feat_full = np.zeros((4*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
+                        temp_label_full = np.zeros((4*feat.shape[0], self._label_seq_len, self._label_len))
                         #reset index array 
                         self.augm_indx = np.array([0], dtype=np.int8)
                         counter = 0
@@ -252,9 +263,10 @@ class DataGenerator(object):
                             temp_feat_full[j,:,:,:] = feat[j,:,:,:]
                             was_augm = False
                             if self.data_augm == 1:
-                                feat_augm, was_augm = SpecAugmentNp(nb_ch = self._nb_ch, nb_mel_bins=self._nb_mel_bins)(feat[j, :, :, :])
+                                feat_augm, was_augm = SpecAugmentNp()(feat[j, :, :, :])
                             elif self.data_augm == 2:
                                 feat_augm, was_augm = RandomShiftUpDownNp(freq_shift_range=10)(feat[j, :, :, :])
+                            
                             if was_augm is True:
                                 counter +=1
                                 #have a list of the indexes of files that were augmented, to copy the labels on that index
@@ -266,21 +278,62 @@ class DataGenerator(object):
                     
                     #(64, 60, 48) (BATCH SIZE, SEQ LEN, CLASSES)
                     label = self._split_in_seqs(label, self._label_seq_len)
-                    #CUSTOM search through labels and append a copy of a label at the augmented index
-                    #if index is augmented, copy label twice
+                   
+                    ##CUSTOM if ensemble method of 3 freq is used 
+                    #then generate 3 feat instead of  and 3 respective labels
+                    if self.model_approach == 4:
+                        label = np.concatenate(label, label, label)
                     if self.data_augm is not 0 and self.train:
                         counter = 0
                         for j in range(label.shape[0]):
                             temp_label_full[j,:,:] = label[j,:,:]
-                            for i in range(1,len(self.augm_indx)):
-                                #copy the label of the previous step
-                                if self.augm_indx[i] == j :
-                                    counter+=1
-                                    temp_label_full[label.shape[0]+counter-1,:,:] = label[j,:,:]
-                                    #np.insert(label, j, [label[j,:,:]], axis=0)
-                                    break
-                        label = temp_label_full[:label.shape[0]+len(self.augm_indx)-1,:,:]
+                            if self.data_augm < 4:
+                                for i in range(1,len(self.augm_indx)):
+                                    #copy the label of the previous step
+                                    if self.augm_indx[i] == j :
+                                        counter+=1
+                                        temp_label_full[label.shape[0]+counter-1,:,:] = label[j,:,:]
+                                        #np.insert(label, j, [label[j,:,:]], axis=0)
+                                        break
+                        if self.data_augm == 4:
+                            counter = 0
+                            for j in range(feat.shape[0]):
+                                feat_augm = []
+                                label_seds = []
+                                label_doas = []
+                                #if self.tta == 1:
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 1)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                                #elif self.tta == 2:
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 2)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                                #elif self.tta == 3:
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 3)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                                feat_news, label_seds, label_doas, was_augm = GccSwapChannelMic( tta = 4)(x = feat[j,:,:,:], y_sed= label[j,:,:self._nb_classes], y_doa= label[j,:,self._nb_classes:])
+                                
+                                if was_augm is True:
+                                    counter +=1
+                                    temp_feat_full[feat.shape[0]+counter-1,:,:,:] = feat_news
+                                    temp_label_full[feat.shape[0]+counter-1,:,:self._nb_classes] = label_seds
+                                    temp_label_full[feat.shape[0]+counter-1,:,self._nb_classes:] = label_doas
+                            feat = temp_feat_full[:feat.shape[0]+counter,:,:,:]
+                        label = temp_label_full[:label.shape[0]+counter,:,:]
                         
+                    #17/5/2022 CUSTOM add temp variable to keep the y_Sed->needed for tta
+                    y_sed = label[:, :, :self._nb_classes]
                     if self._is_accdoa:
                         mask = label[:, :, :self._nb_classes]
                         mask = np.tile(mask, 3)
@@ -291,6 +344,26 @@ class DataGenerator(object):
                             label[:, :, :self._nb_classes],  # SED labels
                             label[:, :, self._nb_classes:] if self._doa_objective is 'mse' else label # SED + DOA labels
                              ]
+
+                    #14/5/2022 CUSTOM for each batch of feat and labels, do tta with ACS (GccRandomSwapMic)
+                    #(10, 60, 36)=(B, T, F) label size
+                    #(10, 10, 60, 36)=(B, C, T, F) feat size
+                    if self.tta > 0:
+                        #np.zeros((2*feat.shape[0],self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
+                        feat_news = np.zeros((label.shape[0], self._nb_ch, self._feature_seq_len,self._nb_mel_bins))
+                        label_seds = np.zeros((label.shape[0], label.shape[1], self._nb_classes))
+                        label_doas = np.zeros((label.shape[0], label.shape[1], label.shape[2]))
+
+                        for i in range(label.shape[0]):
+                            if self.tta == 1:
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:], was_augm = GccSwapChannelMic(always_apply=True, tta = self.tta)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
+                            elif self.tta == 2:
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:], was_augm = GccSwapChannelMic(always_apply=True, tta = self.tta)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
+                            elif self.tta == 3:
+                                feat_news[i,:,:,:], label_seds[i,:,:], label_doas[i,:,:], was_augm = GccSwapChannelMic(always_apply=True, tta = self.tta)(x = feat[i,:,:,:], y_sed= y_sed[i,:,:], y_doa= label[i,:,:])
+                        
+                        feat, label = feat_news, label_doas
+
                     yield feat, label
 
     def _split_in_seqs(self, data, _seq_len):

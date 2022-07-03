@@ -1,27 +1,85 @@
 #
-# A wrapper script that trains the SELDnet. The training stops when the early stopping metric - SELD error stops improving.
+# A wrapper script that trains the ensemble SELDnet. The training stops when the early stopping metric - SELD error stops improving.
 #
+# The first ensemble is baseline and pseudoresnet34
 
+from operator import mod
 import os
 import sys
 import numpy as np
+from tensorboard import summary
 import cls_feature_class
 import cls_data_generator
 from cls_compute_seld_results import ComputeSELDResults, reshape_3Dto2D
 import keras_model
 import parameter
+import parameter2 # for 128 mel
 import time
 import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+import keras
+from keras.models import load_model, Model
 import swa
+
 global history 
-from keras.models import Model
+
 import tensorflow
 import math
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 sd=[]
+class LossHistory(tensorflow.keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = [1,1]
+
+    def on_epoch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        sd.append(step_decay(len(self.losses)))
+        print('lr:', step_decay(len(self.losses)))
+
+history=LossHistory()
+import tensorflow
+
+def freeze_layers(model):
+    for i in model.layers:
+        i.trainable = False
+        if isinstance(i, Model):
+            freeze_layers(i)
+    return model
+def get_model(params, data_in, data_out, app, decoder):
+    import keras
+    keras.backend.set_image_data_format('channels_first')
+    model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
+                                      model_approach=app,
+                                      depth = params['nb_conf'],
+                                      decoder = decoder,
+                                      dconv_kernel_size = params['dconv_kernel_size'],
+                                      nb_conf = params['nb_conf'],
+                                      simple_parallel=params['simple_parallel'])
+    return model
+
+    
+# learning rate schedule
+def step_decay(losses):
+    print('decay ')
+    if float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
+        print('changed')
+        lrate=0.0001*1/(1+0.01*len(history.losses))
+        momentum=0.8
+        decay_rate=2e-6
+        return lrate
+    else:
+        print('hist loss ',history.losses[-1])
+        lrate=0.0001
+        return lrate
+lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
+
 def rotate_back(y_doa, tta, n_classes):
     y_doa_new = y_doa.copy()
     # change y_doa
@@ -37,10 +95,10 @@ def rotate_back(y_doa, tta, n_classes):
             y_doa_new[:,:, n_classes:2 * n_classes] = - y_doa_new[:,:, n_classes:2 * n_classes]
             y_doa_new[:,:, 2 * n_classes:] = - y_doa_new[:,:, 2 * n_classes:]
         elif tta == 4:  # swap M1 and M2, M2 and M4, M3 and M1, M4 and M3 -> swap x and y, negate y and z
-            y_doa_new[:, 0:n_classes] = y_doa[:, n_classes:2*n_classes]
-            y_doa_new[:, n_classes:2*n_classes] = -y_doa[:, :n_classes]
-            y_doa_new[:, n_classes:2 * n_classes] = - y_doa_new[:, n_classes:2 * n_classes]
-            y_doa_new[:, 2 * n_classes:] = - y_doa_new[:, 2 * n_classes:]
+                y_doa_new[:, 0:n_classes] = y_doa[:, n_classes:2*n_classes]
+                y_doa_new[:, n_classes:2*n_classes] = -y_doa[:, :n_classes]
+                y_doa_new[:, n_classes:2 * n_classes] = - y_doa_new[:, n_classes:2 * n_classes]
+                y_doa_new[:, 2 * n_classes:] = - y_doa_new[:, 2 * n_classes:]
 
         elif tta == 5:  # swap M1 and M3, M2 and M1, M3 and M4, M4 and M2 -> swap x and y, negate x and z
             y_doa_new[:, n_classes:2 * n_classes] = - y_doa[:,0:n_classes]
@@ -59,12 +117,35 @@ def rotate_back(y_doa, tta, n_classes):
             y_doa_new[:, :, 2 * n_classes:] = - y_doa_new[:, :, 2 * n_classes:]
     
     return y_doa_new
-def freeze_layers(model):
-    for i in model.layers:
-        i.trainable = False
-        if isinstance(i, Model):
-            freeze_layers(i)
-    return model
+def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred, _doa_pred):
+    '''
+    Write the filewise results to individual csv files
+    '''
+
+    # Number of frames for a 60 second audio with 100ms hop length = 600 frames
+    max_frames_with_content = _data_gen.get_nb_frames()
+
+    # Number of frames in one batch (batch_size* sequence_length) consists of all the 600 frames above with
+    # zero padding in the remaining frames
+    test_filelist = _data_gen.get_filelist()
+    frames_per_file = _data_gen.get_frame_per_file()
+    for file_cnt in range(_sed_pred.shape[0] // frames_per_file):
+        output_file = os.path.join(_dcase_output_folder, test_filelist[file_cnt].replace('.npy', '.csv'))
+        dc = file_cnt * frames_per_file
+        output_dict = _feat_cls.regression_label_format_to_output_format(
+            _sed_pred[dc:dc + max_frames_with_content, :],
+            _doa_pred[dc:dc + max_frames_with_content, :]
+        )
+        _data_gen.write_output_format_file(output_file, output_dict)
+    return
+
+
+def get_accdoa_labels(accdoa_in, nb_classes):
+    x, y, z = accdoa_in[:, :, :nb_classes], accdoa_in[:, :, nb_classes:2*nb_classes], accdoa_in[:, :, 2*nb_classes:]
+    sed = np.sqrt(x**2 + y**2 + z**2) > [0.35, 0.36, 0.3, 0.4, 0.65, 0.6, 0.45, 0.55, 0.3, 0.3, 0.45, 0.3] #0.5
+      
+    return sed, accdoa_in
+
 #Kos ensembling bDNN
 @tf.function
 def predict(model, x, batch_size, win_size, step_size):
@@ -95,62 +176,6 @@ def ensemble_outputs(model, xs: list,
         accdoas.append(accdoa)
 
     return list(accdoa)
-class LossHistory(tensorflow.keras.callbacks.Callback):
-    def on_train_begin(self, logs={}):
-        self.losses = [1,1]
-
-    def on_epoch_end(self, batch, logs={}):
-        self.losses.append(logs.get('loss'))
-        sd.append(step_decay(len(self.losses)))
-        print('lr:', step_decay(len(self.losses)))
-
-history=LossHistory()
-import tensorflow
-
-# learning rate schedule
-def step_decay(losses):
-    print('decay ')
-    if float(2*np.sqrt(np.array(abs(history.losses[-1]))))<0.3:
-        print('changed')
-        lrate=0.0001*1/(1+0.001*len(history.losses))
-        momentum=0.8
-        decay_rate=2e-6
-        return lrate
-    else:
-        print('hist loss ',history.losses[-1])
-        lrate=0.0001
-        return lrate
-lrate= tensorflow.keras.callbacks.LearningRateScheduler(step_decay)
-
-def dump_DCASE2021_results(_data_gen, _feat_cls, _dcase_output_folder, _sed_pred, _doa_pred):
-    '''
-    Write the filewise results to individual csv files
-    '''
-
-    # Number of frames for a 60 second audio with 100ms hop length = 600 frames
-    max_frames_with_content = _data_gen.get_nb_frames()
-
-    # Number of frames in one batch (batch_size* sequence_length) consists of all the 600 frames above with
-    # zero padding in the remaining frames
-    test_filelist = _data_gen.get_filelist()
-    frames_per_file = _data_gen.get_frame_per_file()
-    for file_cnt in range(_sed_pred.shape[0] // frames_per_file):
-        output_file = os.path.join(_dcase_output_folder, test_filelist[file_cnt].replace('.npy', '.csv'))
-        dc = file_cnt * frames_per_file
-        output_dict = _feat_cls.regression_label_format_to_output_format(
-            _sed_pred[dc:dc + max_frames_with_content, :],
-            _doa_pred[dc:dc + max_frames_with_content, :]
-        )
-        _data_gen.write_output_format_file(output_file, output_dict)
-    return
-
-#17/5/2022 Kos apply adaptive threshold
-def get_accdoa_labels(accdoa_in, nb_classes):
-    x, y, z = accdoa_in[:, :, :nb_classes], accdoa_in[:, :, nb_classes:2*nb_classes], accdoa_in[:, :, 2*nb_classes:]
-    sed = np.sqrt(x**2 + y**2 + z**2) > [0.35, 0.36, 0.3, 0.4, 0.65, 0.6, 0.45, 0.55, 0.3, 0.3, 0.45, 0.3] #0.5
-      
-    return sed, accdoa_in
-
 def main(argv):
     """
     Main wrapper for training sound event localization and detection network.
@@ -179,6 +204,7 @@ def main(argv):
     # use parameter set defined by user
     task_id = '1' if len(argv) < 2 else argv[1]
     params = parameter.get_params(task_id)
+    params2 = parameter2.get_params(task_id)
 
     job_id = 1 if len(argv) < 3 else argv[-1]
 
@@ -213,21 +239,13 @@ def main(argv):
         print('Loading training dataset:')
         
         data_gen_train = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True, tta=1
+            params=params, split=train_splits[split_cnt]
         )
-        
-        if params['model_approach'] == 4:
-            data_gen_train2 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True,
-            )
-            data_gen_train3 = cls_data_generator.DataGenerator(
-            params=params, split=train_splits[split_cnt], train=True,
-            )
         print('Loading validation dataset:')
         data_gen_val = cls_data_generator.DataGenerator(
             params=params, split=val_splits[split_cnt], shuffle=False, per_file=True, is_eval=False
         )
-        
+
         # Collect the reference labels for validation data
         data_in, data_out = data_gen_train.get_data_sizes()
         print('FEATURES:\n\tdata_in: {}\n\tdata_out: {}\n'.format(data_in, data_out))
@@ -239,24 +257,6 @@ def main(argv):
 
         
         print('Using loss weights : {}'.format(params['loss_weights']))
-        model = keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
-                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
-                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
-                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
-                                      model_approach=params['model_approach'],
-                                      depth = params['nb_conf'],
-                                      decoder = params['decoder'],
-                                      dconv_kernel_size = params['dconv_kernel_size'],
-                                      nb_conf = params['nb_conf'],
-                                      simple_parallel = params['simple_parallel'])
-        # stochastic weight averaging
-        swa_start_epoch = 10
-        swa_freq = 2
-        swa_obj = swa.SWA(model, swa_start_epoch, swa_freq)
-        # Dump results in DCASE output format for calculating final scores
-        dcase_output_val_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_val'.format(task_id, params['dataset'], params['mode']))
-        cls_feature_class.delete_and_create_folder(dcase_output_val_folder)
-        print('Dumping recording-wise val results in: {}'.format(dcase_output_val_folder))
 
         # Initialize evaluation metric class
         score_obj = ComputeSELDResults(params)
@@ -267,128 +267,91 @@ def main(argv):
         nb_epoch = 2 if params['quick_test'] else params['nb_epochs']
         tr_loss = np.zeros(nb_epoch)
         seld_metric = np.zeros((nb_epoch, 5))
+                
+        data_gen_test = cls_data_generator.DataGenerator(
+            params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
+        )
+        #Load the wanted models
+        model1 = get_model(params, data_in, data_out, 13, 0)
+        #model1.load_weights(params['model_dir']+'2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
+        
+        model2 = get_model(params, data_in, data_out, 12, 0)
+        '''
+        keras_model.get_model(data_in=data_in, data_out=data_out, dropout_rate=params['dropout_rate'],
+                                      nb_cnn2d_filt=params['nb_cnn2d_filt'], f_pool_size=params['f_pool_size'], t_pool_size=params['t_pool_size'],
+                                      rnn_size=params['rnn_size'], fnn_size=params['fnn_size'],
+                                      weights=params['loss_weights'], doa_objective=params['doa_objective'], is_accdoa=params['is_accdoa'],
+                                      model_approach=7,
+                                      depth = params['nb_conf'],
+                                      decoder = 0,
+                                      dconv_kernel_size = params['dconv_kernel_size'],
+                                      nb_conf = params['nb_conf'],
+                                      simple_parallel=params['simple_parallel'])
+'''
+        #model2._name = 'imuseless'
+        print('model2 done')
+        #model1.load_weights(params['model_dir']+'2_swa_baseline_da2_mic_dev_split6_model.h5')
+        model1.load_weights('models/2_densenet_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
+        print('model1 done')
+        #model2.load_weights(params['model_dir']+'2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
+        #squeeze-conformer
+        model2.load_weights(params['model_dir']+'2_conformer_da1_2_3_tta4_no2dense_mic_dev_split6_model.h5')
+        print('weights2 done')
+        
+        model7 = get_model(params, data_in, data_out, 10, 0)
+        print('model7 done')
+        model7.load_weights(params['model_dir']+'2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
+        print('weights3 done')
+        #model7.summary()
+        print('model3 done', unique_name)
+        #model3.save(params['model_dir']+'2_ready_conformer_depth_swa_myda2_adam0_0_0001_nogru_scheduler_wreg_extradenselayer_noinverse_256_mic_dev_split6_model.h5')
+        model4 = get_model(params, data_in, data_out, 6, 0)
+        print('model3 done')
+        model4.load_weights(params['model_dir']+'2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
+        print('weights4 done')
+        model3 = get_model(params, data_in, data_out, 2, 0)
+        #model3.load_weights(params['model_dir']+'2_resnet34_tta2_acs_da1_2_mic_dev_split6_model.h5')
+        #resnet34
+        model3.load_weights(params['model_dir']+'2_new_resnet34_tta2_da2_lenovo_mic_dev_split6_model.h5')
+        print('weights3 done')
 
-        checkpoint_path = "training_checkpoints/model_3/cp-0005.ckpt"
-        if os.path.exists(checkpoint_path):
-            #checkpoint_dir = os.path.dirname(checkpoint_path)
-            #latest = tf.train.latest_checkpoint(checkpoint_dir)
-            #model.load_weights(checkpoint_path)
-            print("heeeeeeeeeeee")
-            from keras.models import load_model
-            checkpoint_dir = os.path.dirname(checkpoint_path)
-            latest = tf.train.latest_checkpoint(checkpoint_dir)
-            #saving only the weights since i have custom AdaBelief optimizer and it gives warning
-            model.load_weights(latest)
-            
-        #model.load_weights('models/2_resnet2020_conformer_tta2_acs_mic_dev_split6_model.h5')
-        #model.load_weights('models/2_resnet34_tta2_acs_da1_2_mic_dev_split6_model.h5')
-        #model.load_weights('models/2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
-        #model.load_weights('models/2_conformer_swa_da1_2_3_tta2_dyn_mic_dev_split6_model.h5')
-        #model.load_weights('models/2_densenet_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
-        #model.load_weights('models/2_densenet_conforemr_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
-        model.load_weights('models/2_conformer_da1_2_3_tta4_no2dense_mic_dev_split6_model.h5')
-        # start training
-        for epoch_cnt in range(nb_epoch):
-            start = time.time()
-            ##CUSTOM 
-            checkpoint_path = "training_checkpoints/model_3/cp-0005.ckpt"
-            checkpoint_dir = os.path.dirname(checkpoint_path)
-            print("heyyy ",checkpoint_path)
-            # Create a callback that saves the model's weights
-            #save weights once per 3 epochs (model actually trains 5 epochs for 50 nb_epochs)
-            #cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                            # save_weights_only=True,
-                                                            # verbose=1,save_freq='epoch')
-            # train once per epoch
-            hist = model.fit_generator(
-                generator=data_gen_train.generate(),
-                steps_per_epoch=2 if params['quick_test'] else data_gen_train.get_total_batches_in_data(),
-                epochs=params['epochs_per_fit'],
-                verbose=2,
-                callbacks=[history,lrate]
-            )
-            swa_obj.on_epoch_end(epoch_cnt)
-            #CUSTOM
-            model.save_weights(model_name)#modified because of memoryerror, it was save instead
-            
-            tr_loss[epoch_cnt] = hist.history.get('loss')[-1]
-           
-            ##CUSTOM plot loss
-            #pd.DataFrame(hist.history).plot()
-            #plt.title("Loss over time")
-            history_dict = hist.history
-            print(history_dict.keys())
-            # summarize history for loss
-            matplotlib.use('TkAgg')
-            plt.plot(hist.history['loss'])
-            plt.title('model loss')
-            plt.ylabel('loss')
-            plt.xlabel('epoch')
-            plt.legend(['train', 'test'], loc='upper left')
+        model5 = get_model(params, data_in, data_out, 10, 0)
+        #resnet-conformer
+        model5.load_weights(params['model_dir']+ '2_new_resnet34_conforer_tta2_da1_2_3_acs1_dyn_mic_dev_split6_model.h5')
+        
+        model6 = get_model(params, data_in, data_out, 8, 0)
+        print('wtf')
+        model6.load_weights(params['model_dir']+'2_densenet_conforemr_da1_2_3_tta_dyn_mic_dev_split6_model.h5')
+        print('wtf')
+        
+        model8 = get_model(params, data_in, data_out, 7, 0)
+        print('wtf')
+        model8.load_weights(params['model_dir']+'2_resnet2020_conformer_tta2_acs_mic_dev_split6_model.h5')
+        print('wtf')
+        ##ensembling
+        models = [model1, model8, model5]
 
-            
-            # predict once per epoch
-            pred = model.predict_generator(
-                generator=data_gen_val.generate(),
-                steps=2 if params['quick_test'] else data_gen_val.get_total_batches_in_data(),
-                verbose=2
-            )
-            
-            if params['is_accdoa']:
-                sed_pred, doa_pred = get_accdoa_labels(pred, nb_classes)
-                sed_pred = reshape_3Dto2D(sed_pred)
-                doa_pred = reshape_3Dto2D(doa_pred)
-            else:
-                sed_pred = reshape_3Dto2D(pred[0]) > 0.5
-                doa_pred = reshape_3Dto2D(pred[1] if params['doa_objective'] is 'mse' else pred[1][:, :, nb_classes:])
-            
-            # Calculate the DCASE 2021 metrics - Location-aware detection and Class-aware localization scores
-            dump_DCASE2021_results(data_gen_val, feat_cls, dcase_output_val_folder, sed_pred, doa_pred)
-            seld_metric[epoch_cnt, :] = score_obj.get_SELD_Results(dcase_output_val_folder)
+        from keras.layers import Input, Average
+        from keras.models import Model
+        model_input = Input(shape=( data_in[-3], data_in[-2], data_in[-1]))
+        print(model_input)
+        model_outputs = [model(model_input) for model in models] #list of models outputs
+        ensemble_output = Average()(model_outputs)
+        ensemble_model = Model(inputs=model_input, outputs=ensemble_output)
 
-            patience_cnt += 1
-            if seld_metric[epoch_cnt, -1] < best_seld_metric:
-                print('saving...')
-                best_seld_metric = seld_metric[epoch_cnt, -1]
-                best_epoch = epoch_cnt
-                #model.save(model_name)
-                print('saved!')
-                patience_cnt = 0
 
-            print(
-                'epoch_cnt: {}, time: {:0.2f}s, tr_loss: {:0.2f}, '
-                '\n\t\t DCASE2021 SCORES: ER: {:0.2f}, F: {:0.1f}, LE: {:0.1f}, LR:{:0.1f}, seld_score (early stopping score): {:0.2f}, '
-                'best_seld_score: {:0.2f}, best_epoch : {}\n'.format(
-                    epoch_cnt, time.time() - start, tr_loss[epoch_cnt],
-                    seld_metric[epoch_cnt, 0], seld_metric[epoch_cnt, 1]*100,
-                    seld_metric[epoch_cnt, 2], seld_metric[epoch_cnt, 3]*100,
-                    seld_metric[epoch_cnt, -1], best_seld_metric, best_epoch
-                )
-            )
-            if patience_cnt > params['patience']:
-                break
-            #17/5/2022
-            model_freezed = freeze_layers(model)
-            model_freezed.save(model_name + 'model')
-            print('model saved i hope or imma kms')
-        print('\nResults on validation split:')
-        print('\tUnique_name: {} '.format(unique_name))
-        print('\tSaved model for the best_epoch: {}'.format(best_epoch))
-        print('\tSELD_score (early stopping score) : {}'.format(best_seld_metric))
-
-        print('\n\tDCASE2021 scores')
-        print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(seld_metric[best_epoch, 2], seld_metric[best_epoch, 3]*100))
-        print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(seld_metric[best_epoch, 0], seld_metric[best_epoch, 1]*100))
-
-        # ------------------  Calculate metric scores for unseen test split ---------------------------------
-        print('\nLoading the best model and predicting results on the testing split')
-        print('\tLoading testing dataset:')
-
+        #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
+        pred_test = ensemble_model.predict_generator(
+            generator=data_gen_test.generate(),
+            steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
+            verbose=2
+        )
         #Kos aggregation
         if params['aggregation'] == True:
             outs = []
-            outs.append(ensemble_outputs(model, data_gen_test, batch_size=params['batch_size']))
-            #del model
+            for model in models:
+                outs.append(ensemble_outputs(model, data_gen_test, batch_size=params['batch_size']))
+                #del model
             
             outs1 = [outs[0]]
             outputs = []
@@ -400,21 +363,22 @@ def main(argv):
 
             print(outputs)
         #####
-        data_gen_test = cls_data_generator.DataGenerator(
-            params=params, split=split, shuffle=False, per_file=True, is_eval=True if params['mode'] is 'eval' else False
-        )
         
-        print(unique_name)
-
-        #swa_obj.on_train_end(model, swa_weights)
-        #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
-        pred_test = model.predict_generator(
-            generator=data_gen_test.generate(),
-            steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
-            verbose=2
-        )
+        # stochastic weight averaging
+            '''swa_start_epoch = 10
+            swa_freq = 2
+            swa_obj = swa.SWA(model1, swa_start_epoch, swa_freq)
+            swa_obj2 = swa.SWA(model2, swa_start_epoch, swa_freq)
+            swa_obj3 = swa.SWA(model3, swa_start_epoch, swa_freq)
+            swa_obj4 = swa.SWA(model4, swa_start_epoch, swa_freq)
+            ##maybe train again??? idk
+            swa_obj.on_train_end()
+            swa_obj2.on_train_end()
+            swa_obj3.on_train_end()
+            swa_obj4.on_train_end()'''
         # TTA
         if params['tta'] is True:
+            print('tta')
             predictions = []
             data_gen_test_tta1 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 1, is_eval=True if params['mode'] is 'eval' else False
@@ -422,13 +386,12 @@ def main(argv):
             data_gen_test_tta2 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 2, is_eval=True if params['mode'] is 'eval' else False
             )
-            data_gen_test_tta3 = cls_data_generator.DataGenerator(
+            '''data_gen_test_tta3 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 3, is_eval=True if params['mode'] is 'eval' else False
             )
             data_gen_test_tta4 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 4, is_eval=True if params['mode'] is 'eval' else False
             )
-            '''
             data_gen_test_tta5 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 5, is_eval=True if params['mode'] is 'eval' else False
             )
@@ -438,51 +401,50 @@ def main(argv):
             data_gen_test_tta7 = cls_data_generator.DataGenerator(
                 params=params, split=split, shuffle=False, per_file=True, train=False, tta = 7, is_eval=True if params['mode'] is 'eval' else False
             )'''
-            pred_test_tta1 = model.predict_generator(
+            pred_test_tta1 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta1.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             ) 
-            pred_test_tta2 = model.predict_generator(
+            pred_test_tta2 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta2.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             )
-            pred_test_tta3 = model.predict_generator(
+            '''pred_test_tta3 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta3.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             ) 
-            pred_test_tta4 = model.predict_generator(
+            pred_test_tta4 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta4.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             )
-            '''
-            pred_test_tta5 = model.predict_generator(
+            pred_test_tta5 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta5.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             ) 
-            pred_test_tta6 = model.predict_generator(
+            pred_test_tta6 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta6.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
             )
-            pred_test_tta7 = model.predict_generator(
+            pred_test_tta7 = ensemble_model.predict_generator(
                 generator=data_gen_test_tta7.generate(),
                 steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
                 verbose=2
-            ) 
-            '''
+            ) '''
+            
             print('pred tta', pred_test.shape)
             print('pred tta', pred_test_tta1.shape)
             print('pred tta', pred_test_tta2.shape)
             #rotate back
             pred_test_tta1 = rotate_back(pred_test_tta1, tta=1, n_classes=nb_classes) 
             pred_test_tta2 = rotate_back(pred_test_tta2, tta=2, n_classes=nb_classes)
-            pred_test_tta3 = rotate_back(pred_test_tta3, tta=3, n_classes=nb_classes) 
-            pred_test_tta4 = rotate_back(pred_test_tta4, tta=4, n_classes=nb_classes)
+            #pred_test_tta3 = rotate_back(pred_test_tta3, tta=3, n_classes=nb_classes) 
+            #pred_test_tta4 = rotate_back(pred_test_tta4, tta=4, n_classes=nb_classes)
             #pred_test_tta5 = rotate_back(pred_test_tta5, tta=5, n_classes=nb_classes) 
             #pred_test_tta6 = rotate_back(pred_test_tta6, tta=6, n_classes=nb_classes)
             #pred_test_tta7 = rotate_back(pred_test_tta7, tta=7, n_classes=nb_classes) 
@@ -495,24 +457,8 @@ def main(argv):
             #predictions.append(pred_test_tta5)
             #predictions.append(pred_test_tta6)
             #predictions.append(pred_test_tta7)
-
-            pred_test = np.mean(predictions, axis=0)
         ##
-            #np.mean(np.equal(np.argmax(y_val, axis=-1), np.argmax(pred_test, axis=-1)))
-        if params['model_approach'] == 40:
-            #model = keras_model.load_seld_model('{}_model.h5'.format(unique_name), params['doa_objective'],params['model_approach'], False, '')
-            pred_test2 = model2.predict_generator(
-                generator=data_gen_test.generate(),
-                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
-                verbose=2
-            )
-            pred_test3 = model3.predict_generator(
-                generator=data_gen_test.generate(),
-                steps=2 if params['quick_test'] else data_gen_test.get_total_batches_in_data(),
-                verbose=2
-            )
-            #pred_test = (pred_test + pred_test2 + pred_test3)//3
-
+            pred_test = np.mean(predictions, axis=0)
         if params['is_accdoa']:
             test_sed_pred, test_doa_pred = get_accdoa_labels(pred_test, nb_classes)
             test_sed_pred = reshape_3Dto2D(test_sed_pred)
@@ -520,8 +466,6 @@ def main(argv):
         else:
             test_sed_pred = reshape_3Dto2D(pred_test[0]) > 0.5
             test_doa_pred = reshape_3Dto2D(pred_test[1] if params['doa_objective'] is 'mse' else pred_test[1][:, :, nb_classes:])
-
-
 
         # Dump results in DCASE output format for calculating final scores
         dcase_output_test_folder = os.path.join(params['dcase_output_dir'] if len(argv) < 3 else params['dcase_output_dir'] + argv[1] + '_' + argv[2], '{}_{}_{}_test'.format(task_id, params['dataset'], params['mode']))
@@ -538,11 +482,9 @@ def main(argv):
             print('\tClass-aware localization scores: Localization Error: {:0.1f}, Localization Recall: {:0.1f}'.format(test_seld_metric[2], test_seld_metric[3]*100))
             print('\tLocation-aware detection scores: Error rate: {:0.2f}, F-score: {:0.1f}'.format(test_seld_metric[0], test_seld_metric[1]*100))
             print('\tSELD (early stopping metric): {:0.2f}'.format(test_seld_metric[-1]))
-    plt.show()
-    
-    model.save_weights(model_name)#modified because of memoryerror, it was save instead
-    model_freezed = freeze_layers(model)
-    model_freezed.save(model_name + 'model')
+    ensemble_model.save_weights(model_name)#modified because of memoryerror, it was save instead
+    model_freezed = freeze_layers(ensemble_model)
+    model_freezed.save(model_name + 'ensemble_model')
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv))

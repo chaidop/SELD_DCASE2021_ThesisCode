@@ -37,11 +37,25 @@ def plot_func(plot_data, hop_len_s, ind, plot_x_ax=False, plot_y_ax=False):
     if not plot_y_ax:
         plot.gca().axes.set_yticklabels([])
 # --------------------------------- MAIN SCRIPT STARTS HERE -----------------------------------------
+
+import sys
+ 
+total = len(sys.argv)
+cmdargs = str(sys.argv)
+print ("The total numbers of args passed to the script: %d " % total)
+print ("Args list: %s " % cmdargs)
+# Pharsing args one by one 
+if total > 2:
+    print ("First argument: %s" % str(sys.argv[1]))#for first arument 2 or 1
+    print ("Second argument: %s" % str(sys.argv[2]))#take second argument as model name for the outputs
+
 params = parameter.get_params()
 
 # output format file to visualize
-pred = os.path.join(params['dcase_output_dir'], '2_mic_dev_test/fold6_room1_mix001.csv')
-
+if total > 2:
+    pred = os.path.join(params['dcase_output_dir']+sys.argv[1]+'_'+sys.argv[2], '2_mic_dev_test/fold6_room1_mix001.csv')
+else:
+    pred = os.path.join(params['dcase_output_dir'], '2_mic_dev_test/fold6_room1_mix001.csv')
 # path of reference audio directory for visualizing the spectrogram and description directory for
 # visualizing the reference
 # Note: The code finds out the audio filename from the predicted filename automatically
@@ -80,5 +94,11 @@ ax6 = plot.subplot(gs[3, 2:]), plot_func(pred_data, params['label_hop_len_s'], i
 ax_lst = [ax0, ax1, ax2, ax3, ax4, ax5, ax6]
 fig_file = os.path.join(params['dcase_output_dir'] , ref_filename.replace('.wav', '.jpg'))
 plot.savefig(fig_file, dpi=300, bbox_inches = "tight")
+
+# Renaming the file
+if total > 2:
+    os.rename(fig_file, './results/'+str(sys.argv[2])+'.jpg')
+    fig_file = './results/'+str(sys.argv[2])+'.jpg'
+
 print('Saved figure at : {}'.format(fig_file))
 

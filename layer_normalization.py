@@ -19,9 +19,7 @@ class LayerNormalization(keras.layers.Layer):
                  beta_constraint=None,
                  **kwargs):
         """Layer normalization layer
-
         See: [Layer Normalization](https://arxiv.org/pdf/1607.06450.pdf)
-
         :param center: Add an offset parameter if it is True.
         :param scale: Add a scale parameter if it is True.
         :param epsilon: Epsilon for calculating variance.

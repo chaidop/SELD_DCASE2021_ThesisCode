@@ -137,3 +137,9 @@ For more information on the submission file formats [check the website](http://d
 ## License
 
 Except for the contents in the `metrics` folder that have [MIT License](metrics/LICENSE.md). The rest of the repository is licensed under the [TAU License](LICENSE.md).
+
+## HOW TO RUN
+
+To choose a model, change the 'model_approach' variable in parameter.py to the number of the wanted model.
+The code for all models is in the keras_models.py. The code for the Conformer is in the neural_models/ folder.
+To run the programm after choosing the model from the parameters, run >python seld.py.

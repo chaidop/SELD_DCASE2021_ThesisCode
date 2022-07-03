@@ -69,7 +69,14 @@ class ComputeSELDResults(object):
             if self._use_polar_format:
                 pred_dict = self._feat_cls.convert_output_format_cartesian_to_polar(pred_dict)
             pred_labels = self._feat_cls.segment_labels(pred_dict, self._feat_cls.get_nb_frames())
-
+            ##CUSTOM check if it has 'augm' in name
+            #if true, then concatenate name to not include it
+            if 'augm' in pred_file:
+                if 'augm1' in pred_file or 'augm2' in pred_file:
+                    pred_file = pred_file[:-10]
+                else:
+                    pred_file = pred_file[:-9]
+                pred_file = pred_file + '.csv'
             # Calculated scores
             eval.update_seld_scores(pred_labels, self._ref_labels[pred_file])
 
@@ -142,4 +149,3 @@ if __name__ == "__main__":
 
     # Compute DCASE 2021 results along with room-wise performance
     score_obj.get_consolidated_SELD_results(pred_output_format_files)
-

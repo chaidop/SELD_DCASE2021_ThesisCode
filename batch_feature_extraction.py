@@ -1,12 +1,12 @@
 # Extracts the features, labels, and normalizes the development and evaluation split features.
 
 import cls_feature_class
-import parameter
+import parameter2 #parameter
 
 process_str = 'dev, eval'   # 'dev' or 'eval' will extract features for the respective set accordingly
                             #  'dev, eval' will extract features of both sets together
 
-params = parameter.get_params()
+params = parameter2.get_params()
 
 
 if 'dev' in process_str:

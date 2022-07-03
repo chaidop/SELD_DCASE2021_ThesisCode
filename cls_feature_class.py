@@ -15,10 +15,8 @@ import shutil
 import math
 from data_augmentation import *
 
-
 def nCr(n, r):
     return math.factorial(n) // math.factorial(r) // math.factorial(n-r)
-
 
 class FeatureClass:
     def __init__(self, params, is_eval=False):
@@ -64,7 +62,11 @@ class FeatureClass:
 
         #### CUSTOM array of indexes of augmented files
         self.augm_indx = []
+        self.augm_indx2 = []
         self._data_augm = params['data_augm']
+        self.was_augm1 = False
+        self.was_augm2 = False
+        self.model_approach = params['model_approach']
 
         # Sound event classes dictionary
         self._unique_classes = params['unique_classes']
@@ -194,6 +196,90 @@ class FeatureClass:
                 #extract mel
                 mel_spect = self._get_mel_spectrogram(spect)
                 feat = None
+
+                ##### CUSTOM data augmentation that does not change label, only in train dataset
+                # These offline augmentation techniques are applied on the spectograms
+                '''
+                if not self._is_eval and self._data_augm is not 0:
+                    was_augmented = was_augmented1 = was_augmented2 = False
+                    t_mel_spect = np.reshape(mel_spect, (mel_spect.shape[0], -1, self._nb_channels))
+                    t_mel_spect = np.transpose(t_mel_spect, (2,0,1))
+                    print('MEL SIZE', t_mel_spect.shape, mel_spect)
+                    if self._data_augm == 1:
+                        feat_augm, was_augmented = SpecAugmentNp(n_time_stripes=0)(t_mel_spect)#apply only freq masking
+                    elif self._data_augm == 2:
+                        feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(t_mel_spect)
+                    elif self._data_augm == 3:
+                        feat_augm1, was_augmented1 = SpecAugmentNp()(t_mel_spect)
+                        feat_augm2, was_augmented2 = RandomShiftUpDownNp(freq_shift_range=10)(t_mel_spect)
+                    if was_augmented:
+                        #have a list of the names of files that were augmented, to copy the labels on that index
+                        self.augm_indx = np.append(self.augm_indx, file_name)
+                        if was_augmented1 or was_augmented2:
+                            feat_augm = np.transpose(feat_augm, (1,2,0))
+                        else:
+                            feat_augm = np.transpose(feat_augm, (1,2,0))
+                        feat_augm = np.reshape(feat_augm, (feat_augm.shape[0], -1))
+                        if self._dataset == 'foa':
+                            # extract intensity vectors
+                            foa_iv = self._get_foa_intensity_vectors(spect)
+                            feat = np.concatenate((feat_augm, foa_iv), axis=-1)
+                        elif self._dataset == 'mic':
+                            # extract gcc
+                            gcc = self._get_gcc(spect)
+                            feat = np.concatenate((feat_augm, gcc), axis=-1)
+                        else:
+                            print('ERROR: Unknown dataset format {}'.format(self._dataset))
+                            exit()
+
+                        if feat is not None:
+                            print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                            np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat)
+                        
+                    if was_augmented1:
+                        self.was_augm1 = True
+                        self.augm_indx = np.append(self.augm_indx, file_name)
+                        feat_augm1 = np.transpose(feat_augm1, (1,2,0))
+                        feat_augm1 = np.reshape(feat_augm1, (feat_augm1.shape[0], -1))
+
+                        if self._dataset == 'foa':
+                            # extract intensity vectors
+                            foa_iv = self._get_foa_intensity_vectors(spect)
+                            feat = np.concatenate((feat_augm1, foa_iv), axis=-1)
+                        elif self._dataset == 'mic':
+                            # extract gcc
+                            gcc = self._get_gcc(spect)
+                            feat = np.concatenate((feat_augm1, gcc), axis=-1)
+                        else:
+                            print('ERROR: Unknown dataset format {}'.format(self._dataset))
+                            exit()
+
+                        if feat is not None:
+                            print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                            np.save(os.path.join(self._feat_dir, '{}_augm1.npy'.format(wav_filename.split('.')[0])), feat)
+                    if was_augmented2:
+                        self.was_augm2 = True
+                        self.augm_indx2 = np.append(self.augm_indx2, file_name)
+                        feat_augm2 = np.transpose(feat_augm2, (1,2,0))
+                        feat_augm2 = np.reshape(feat_augm2, (feat_augm2.shape[0], -1))
+
+                        if self._dataset == 'foa':
+                            # extract intensity vectors
+                            foa_iv = self._get_foa_intensity_vectors(spect)
+                            feat = np.concatenate((feat_augm2, foa_iv), axis=-1)
+                        elif self._dataset == 'mic':
+                            # extract gcc
+                            gcc = self._get_gcc(spect)
+                            feat = np.concatenate((feat_augm2, gcc), axis=-1)
+                        else:
+                            print('ERROR: Unknown dataset format {}'.format(self._dataset))
+                            exit()
+                        if feat is not None:
+                            print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                            np.save(os.path.join(self._feat_dir, '{}_augm2.npy'.format(wav_filename.split('.')[0])), feat)
+                '''
+                #######
+
                 if self._dataset == 'foa':
                     # extract intensity vectors
                     foa_iv = self._get_foa_intensity_vectors(spect)
@@ -208,18 +294,35 @@ class FeatureClass:
 
                 if feat is not None:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, feat.shape ))
+                    was_augmented = was_augmented1 = was_augmented2 = False
+                    np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
                     ##### CUSTOM data augmentation that does not change label, only in train dataset
-                    if not self._is_eval and self._data_augm is not 0:
-                        feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                    if not self._is_eval and self._data_augm > 0:
+                        if self._data_augm == 2:
+                            feat_augm, was_augmented = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                        elif self._data_augm == 1:
+                            feat_augm, was_augmented = SpecAugmentNp()(feat)
                         if was_augmented:
                             #have a list of the names of files that were augmented, to copy the labels on that index
                             self.augm_indx = np.append(self.augm_indx, file_name)
                             np.save(os.path.join(self._feat_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), feat_augm)
                             print('\t{}: {}_augm, {}'.format(file_cnt, file_name, feat.shape ))
-                    #######
-                    np.save(os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0])), feat)
-
-                    
+                        if self._data_augm == 3:
+                            feat_augm1, was_augmented1 = SpecAugmentNp()(feat)
+                            feat_augm2, was_augmented2 = RandomShiftUpDownNp(freq_shift_range=10)(feat)
+                        if was_augmented1:
+                            self.was_augm1 = True
+                            #have a list of the names of files that were augmented, to copy the labels on that index
+                            self.augm_indx = np.append(self.augm_indx, file_name)
+                            np.save(os.path.join(self._feat_dir, '{}_augm1.npy'.format(wav_filename.split('.')[0])), feat_augm1)
+                            print('\t{}: {}_augm1, {}'.format(file_cnt, file_name, feat_augm1.shape ))
+                        if was_augmented2:
+                            self.was_augm2 = True
+                            #have a list of the names of files that were augmented, to copy the labels on that index
+                            self.augm_indx2 = np.append(self.augm_indx2, file_name)
+                            np.save(os.path.join(self._feat_dir, '{}_augm2.npy'.format(wav_filename.split('.')[0])), feat_augm2)
+                            print('\t{}: {}_augm2, {}'.format(file_cnt, file_name, feat_augm2.shape ))
+                    #######      
 
     def preprocess_features(self):
         # Setting up folders and filenames
@@ -266,10 +369,9 @@ class FeatureClass:
 
     # ------------------------------- EXTRACT LABELS AND PREPROCESS IT -------------------------------
     def extract_all_labels(self):
-        i = 0
-
+       
         self._label_dir = self.get_label_dir()
-
+        print(len(self.augm_indx), len(self.augm_indx2))
         print('Extracting labels:')
         print('\t\taud_dir {}\n\t\tdesc_dir {}\n\t\tlabel_dir {}'.format(
             self._aud_dir, self._desc_dir, self._label_dir))
@@ -285,11 +387,32 @@ class FeatureClass:
                     print('\t{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
                     np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
                     #CUSTOM save twice if the file is augmented
-                    print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
-                    if self.augm_indx[i] == wav_filename :
-                        np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
-                        i +=1
-
+                    if self._data_augm > 0:
+                        
+                        if self._data_augm == 3:
+                            if self.was_augm1:
+                                i = 0
+                                
+                                for i in range(len(self.augm_indx)):
+                                    if self.augm_indx[i] == wav_filename :
+                                        print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
+                                        np.save(os.path.join(self._label_dir, '{}_augm1.npy'.format(wav_filename.split('.')[0])), label_mat)
+                                        break
+                            if self.was_augm2:
+                                i = 0
+                                
+                                for i in range(len(self.augm_indx2)):
+                                    if self.augm_indx2[i] == wav_filename :
+                                        print(i, self.augm_indx2[i], self.augm_indx2[i]==wav_filename)
+                                        np.save(os.path.join(self._label_dir, '{}_augm2.npy'.format(wav_filename.split('.')[0])), label_mat)
+                                        break
+                        else:
+                            print(i, self.augm_indx[i], self.augm_indx[i]==wav_filename)
+                            for i in range(len(self.augm_indx)):
+                                if self.augm_indx[i] == wav_filename :
+                                    np.save(os.path.join(self._label_dir, '{}_augm.npy'.format(wav_filename.split('.')[0])), label_mat)
+                                    break
+                    
     # -------------------------------  DCASE OUTPUT  FORMAT FUNCTIONS -------------------------------
     def load_output_format_file(self, _output_format_file):
         """
