@@ -143,3 +143,13 @@ Except for the contents in the `metrics` folder that have [MIT License](metrics/
 To choose a model, change the 'model_approach' variable in parameter.py to the number of the wanted model.
 The code for all models is in the keras_models.py. The code for the Conformer is in the neural_models/ folder.
 To run the programm after choosing the model from the parameters, run >python seld.py.
+
+
+## MY CONTRIBUTION TO THE PROBLEM
+This Thesis reviews and develops different popular model architectures for the complex problem of SELD, while also applying different optimization techniques.
+An example output of predicitons made by the developed Resnet-Conformer model is seen in below image:
+![Alt text](res_conf_results.png)
+The predicitons of the baseline model for the same input test file are seen below:
+![Alt text](baseline.png)
+
+It is apparent that the model developed in my Thesis gives more accurate predicitons on the Azimuth and can also detect overlapping events of the same class in certain time frames.
