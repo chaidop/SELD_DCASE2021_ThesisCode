@@ -1,0 +1,1 @@
+NOTE: working with tf 2.4.1, keras 2.4.1, cuda 11 and cudnn 8.4(with cudnn 7 lib files in cuda 11 folder as well)
